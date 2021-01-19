@@ -16,13 +16,11 @@
 
 package com.alibaba.otter.node.etl.common.db.dialect;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
+import com.alibaba.otter.node.etl.common.datasource.DataSourceService;
+import com.alibaba.otter.shared.common.utils.meta.DdlUtils;
+import com.alibaba.otter.shared.common.utils.meta.DdlUtilsFilter;
+import com.google.common.base.Function;
+import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.NestableRuntimeException;
 import org.apache.ddlutils.model.Table;
@@ -37,11 +35,12 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
-import com.alibaba.otter.node.etl.common.datasource.DataSourceService;
-import com.alibaba.otter.shared.common.utils.meta.DdlUtils;
-import com.alibaba.otter.shared.common.utils.meta.DdlUtilsFilter;
-import com.google.common.base.Function;
-import com.google.common.collect.OtterMigrateMap;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author jianghang 2011-10-27 下午01:50:19
@@ -49,18 +48,18 @@ import com.google.common.collect.OtterMigrateMap;
  */
 public abstract class AbstractDbDialect implements DbDialect {
 
-    protected static final Logger      logger = LoggerFactory.getLogger(AbstractDbDialect.class);
-    protected int                      databaseMajorVersion;
-    protected int                      databaseMinorVersion;
-    protected String                   databaseName;
-    protected DataSourceService        dataSourceService;
-    protected SqlTemplate              sqlTemplate;
-    protected JdbcTemplate             jdbcTemplate;
-    protected TransactionTemplate      transactionTemplate;
-    protected LobHandler               lobHandler;
-    protected Map<List<String>, Table> tables;
+    protected static final Logger                   logger = LoggerFactory.getLogger(AbstractDbDialect.class);
+    protected              int                      databaseMajorVersion;
+    protected              int                      databaseMinorVersion;
+    protected              String                   databaseName;
+    protected              DataSourceService        dataSourceService;
+    protected              SqlTemplate              sqlTemplate;
+    protected              JdbcTemplate             jdbcTemplate;
+    protected              TransactionTemplate      transactionTemplate;
+    protected              LobHandler               lobHandler;
+    protected              Map<List<String>, Table> tables;
 
-    public AbstractDbDialect(final JdbcTemplate jdbcTemplate, LobHandler lobHandler){
+    public AbstractDbDialect(final JdbcTemplate jdbcTemplate, LobHandler lobHandler) {
         this.jdbcTemplate = jdbcTemplate;
         this.lobHandler = lobHandler;
         // 初始化transction
@@ -71,7 +70,7 @@ public abstract class AbstractDbDialect implements DbDialect {
         // 初始化一些数据
         jdbcTemplate.execute(new ConnectionCallback() {
 
-            public Object doInConnection(Connection c) throws SQLException, DataAccessException {
+            @Override public Object doInConnection(Connection c) throws SQLException, DataAccessException {
                 DatabaseMetaData meta = c.getMetaData();
                 databaseName = meta.getDatabaseProductName();
                 databaseMajorVersion = meta.getDatabaseMajorVersion();
@@ -85,7 +84,7 @@ public abstract class AbstractDbDialect implements DbDialect {
     }
 
     public AbstractDbDialect(JdbcTemplate jdbcTemplate, LobHandler lobHandler, String name, int majorVersion,
-                             int minorVersion){
+                             int minorVersion) {
         this.jdbcTemplate = jdbcTemplate;
         this.lobHandler = lobHandler;
         // 初始化transction
@@ -100,7 +99,7 @@ public abstract class AbstractDbDialect implements DbDialect {
         initTables(jdbcTemplate);
     }
 
-    public Table findTable(String schema, String table, boolean useCache) {
+    @Override public Table findTable(String schema, String table, boolean useCache) {
         List<String> key = Arrays.asList(schema, table);
         if (useCache == false) {
             tables.remove(key);
@@ -109,11 +108,11 @@ public abstract class AbstractDbDialect implements DbDialect {
         return tables.get(key);
     }
 
-    public Table findTable(String schema, String table) {
+    @Override public Table findTable(String schema, String table) {
         return findTable(schema, table, true);
     }
 
-    public void reloadTable(String schema, String table) {
+    @Override public void reloadTable(String schema, String table) {
         if (StringUtils.isNotEmpty(table)) {
             tables.remove(Arrays.asList(schema, table));
         } else {
@@ -122,48 +121,47 @@ public abstract class AbstractDbDialect implements DbDialect {
         }
     }
 
-    public String getName() {
+    @Override public String getName() {
         return databaseName;
     }
 
-    public int getMajorVersion() {
+    @Override public int getMajorVersion() {
         return databaseMajorVersion;
     }
 
-    @Override
-    public int getMinorVersion() {
+    @Override public int getMinorVersion() {
         return databaseMinorVersion;
     }
 
-    public String getVersion() {
+    @Override public String getVersion() {
         return databaseMajorVersion + "." + databaseMinorVersion;
     }
 
-    public LobHandler getLobHandler() {
+    @Override public LobHandler getLobHandler() {
         return lobHandler;
     }
 
-    public JdbcTemplate getJdbcTemplate() {
+    @Override public JdbcTemplate getJdbcTemplate() {
         return jdbcTemplate;
     }
 
-    public TransactionTemplate getTransactionTemplate() {
+    @Override public TransactionTemplate getTransactionTemplate() {
         return transactionTemplate;
     }
 
-    public SqlTemplate getSqlTemplate() {
+    @Override public SqlTemplate getSqlTemplate() {
         return sqlTemplate;
     }
 
-    public boolean isDRDS() {
+    @Override public boolean isDRDS() {
         return false;
     }
 
-    public String getShardColumns(String schema, String table) {
+    @Override public String getShardColumns(String schema, String table) {
         return null;
     }
 
-    public void destory() {
+    @Override public void destory() {
     }
 
     // ================================ helper method ==========================
@@ -171,7 +169,7 @@ public abstract class AbstractDbDialect implements DbDialect {
     private void initTables(final JdbcTemplate jdbcTemplate) {
         this.tables = OtterMigrateMap.makeSoftValueComputingMap(new Function<List<String>, Table>() {
 
-            public Table apply(List<String> names) {
+            @Override public Table apply(List<String> names) {
                 Assert.isTrue(names.size() == 2);
                 try {
                     beforeFindTable(jdbcTemplate, names.get(0), names.get(0), names.get(1));
@@ -179,14 +177,14 @@ public abstract class AbstractDbDialect implements DbDialect {
                     Table table = DdlUtils.findTable(jdbcTemplate, names.get(0), names.get(0), names.get(1), filter);
                     afterFindTable(table, jdbcTemplate, names.get(0), names.get(0), names.get(1));
                     if (table == null) {
-                        throw new NestableRuntimeException("no found table [" + names.get(0) + "." + names.get(1)
-                                                           + "] , pls check");
+                        throw new NestableRuntimeException(
+                                "no found table [" + names.get(0) + "." + names.get(1) + "] , pls check");
                     } else {
                         return table;
                     }
                 } catch (Exception e) {
                     throw new NestableRuntimeException("find table [" + names.get(0) + "." + names.get(1) + "] error",
-                        e);
+                            e);
                 }
             }
         });

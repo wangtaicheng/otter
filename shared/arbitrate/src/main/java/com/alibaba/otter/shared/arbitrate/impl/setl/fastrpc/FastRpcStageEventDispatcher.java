@@ -16,8 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.fastrpc;
 
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.impl.communication.ArbitrateCommmunicationClient;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
@@ -26,10 +24,11 @@ import com.alibaba.otter.shared.common.model.config.enums.StageType;
 import com.alibaba.otter.shared.communication.core.CommunicationRegistry;
 import com.alibaba.otter.shared.communication.model.arbitrate.ArbitrateEventType;
 import com.alibaba.otter.shared.communication.model.arbitrate.StageSingleEvent;
+import org.springframework.util.Assert;
 
 /**
  * 分发rpc的请求，根据不同的pipelineId分发到不同的{@link FastRpcStageController}实例上去
- * 
+ *
  * @author jianghang 2013-2-28 下午10:04:50
  * @version 4.1.7
  */
@@ -37,7 +36,7 @@ public class FastRpcStageEventDispatcher {
 
     private ArbitrateCommmunicationClient arbitrateCommmunicationClient;
 
-    public FastRpcStageEventDispatcher(){
+    public FastRpcStageEventDispatcher() {
         CommunicationRegistry.regist(ArbitrateEventType.fastStageSingle, this);
     }
 
@@ -48,7 +47,7 @@ public class FastRpcStageEventDispatcher {
         Assert.notNull(event.getPipelineId());
         // 根据pipeline找到对应的实例
         FastRpcStageController controller = ArbitrateFactory.getInstance(event.getPipelineId(),
-                                                                         FastRpcStageController.class);
+                FastRpcStageController.class);
         return controller.single(event.getStage(), (EtlEventData) event.getData());
     }
 
@@ -63,11 +62,12 @@ public class FastRpcStageEventDispatcher {
         event.setPipelineId(eventData.getPipelineId());
         event.setStage(stage);
         event.setData(eventData);
-
-        if (isLocal(eventData.getNextNid())) {// 判断是否为本地jvm
+        // 判断是否为本地jvm
+        if (isLocal(eventData.getNextNid())) {
             return onStageSingle(event);
         } else {
-            return (Boolean) arbitrateCommmunicationClient.call(eventData.getNextNid(), event);// rpc通知下一个节点
+            // rpc通知下一个节点
+            return (Boolean) arbitrateCommmunicationClient.call(eventData.getNextNid(), event);
         }
     }
 
