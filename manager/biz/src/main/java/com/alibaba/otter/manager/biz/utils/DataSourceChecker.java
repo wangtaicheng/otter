@@ -16,22 +16,6 @@
 
 package com.alibaba.otter.manager.biz.utils;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import javax.sql.DataSource;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.ddlutils.model.Table;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-
 import com.alibaba.otter.manager.biz.common.DataSourceCreator;
 import com.alibaba.otter.manager.biz.config.datamediasource.DataMediaSourceService;
 import com.alibaba.otter.shared.common.model.config.ConfigHelper;
@@ -43,15 +27,29 @@ import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
 import com.alibaba.otter.shared.common.utils.meta.DdlSchemaFilter;
 import com.alibaba.otter.shared.common.utils.meta.DdlTableNameFilter;
 import com.alibaba.otter.shared.common.utils.meta.DdlUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.ddlutils.model.Table;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author simon 2011-11-25 下午04:57:55
  */
 public class DataSourceChecker {
 
-    private static final Logger    logger             = LoggerFactory.getLogger(DataSourceChecker.class);
+    private static final Logger logger = LoggerFactory.getLogger(DataSourceChecker.class);
     private DataMediaSourceService dataMediaSourceService;
-    private DataSourceCreator      dataSourceCreator;
+    private DataSourceCreator dataSourceCreator;
 
     // private static final String MYSQL_FLAG = "mysql";
 
@@ -61,19 +59,19 @@ public class DataSourceChecker {
     // private static final String DBTYPE_CONFLICT =
     // "\u9009\u62e9\u7684\u6570\u636e\u5e93\u7c7b\u578b\u548cjdbc-url\u4e0d\u5339\u914d";
     // 恭喜,数据库通过验证!
-    private static final String    DATABASE_SUCCESS   = "\u606d\u559c,\u6570\u636e\u5e93\u901a\u8fc7\u9a8c\u8bc1!";
+    private static final String DATABASE_SUCCESS = "\u606d\u559c,\u6570\u636e\u5e93\u901a\u8fc7\u9a8c\u8bc1!";
     // 抱歉,数据库未通过验证,请检查相关配置!
-    private static final String    DATABASE_FAIL      = "\u62b1\u6b49,\u6570\u636e\u5e93\u672a\u901a\u8fc7\u9a8c\u8bc1,\u8bf7\u68c0\u67e5\u76f8\u5173\u914d\u7f6e!";
+    private static final String DATABASE_FAIL = "\u62b1\u6b49,\u6570\u636e\u5e93\u672a\u901a\u8fc7\u9a8c\u8bc1,\u8bf7\u68c0\u67e5\u76f8\u5173\u914d\u7f6e!";
     // 恭喜,select操作成功,权限正常!
-    private static final String    TABLE_SUCCESS      = "\u606d\u559c,select\u64cd\u4f5c\u6210\u529f,\u6743\u9650\u6b63\u5e38!";
+    private static final String TABLE_SUCCESS = "\u606d\u559c,select\u64cd\u4f5c\u6210\u529f,\u6743\u9650\u6b63\u5e38!";
     // 抱歉select操作报错,请检查权限配置!
-    private static final String    TABLE_FAIL         = "\u62b1\u6b49,\u64cd\u4f5c\u62a5\u9519,\u8bf7\u68c0\u67e5\u6743\u9650\u914d\u7f6e!";
+    private static final String TABLE_FAIL = "\u62b1\u6b49,\u64cd\u4f5c\u62a5\u9519,\u8bf7\u68c0\u67e5\u6743\u9650\u914d\u7f6e!";
     // 恭喜,编码验证正确!
-    private static final String    ENCODE_QUERY_ERROR = "\u6267\u884cSQL\u51fa\u9519,\u8bf7\u68c0\u67e5\u6570\u636e\u5e93\u7c7b\u578b\u662f\u5426\u9009\u62e9\u6b63\u786e!";
+    private static final String ENCODE_QUERY_ERROR = "\u6267\u884cSQL\u51fa\u9519,\u8bf7\u68c0\u67e5\u6570\u636e\u5e93\u7c7b\u578b\u662f\u5426\u9009\u62e9\u6b63\u786e!";
     // 抱歉,字符集不匹配,实际数据库默认字符集为:
-    private static final String    ENCODE_FAIL        = "\u62b1\u6b49,\u5b57\u7b26\u96c6\u4e0d\u5339\u914d,\u5b9e\u9645\u6570\u636e\u5e93\u9ed8\u8ba4\u5b57\u7b26\u96c6\u4e3a:";
+    private static final String ENCODE_FAIL = "\u62b1\u6b49,\u5b57\u7b26\u96c6\u4e0d\u5339\u914d,\u5b9e\u9645\u6570\u636e\u5e93\u9ed8\u8ba4\u5b57\u7b26\u96c6\u4e3a:";
     // SELECT未成功
-    private static final String    SELECT_FAIL        = "SELECT\u672a\u6210\u529f";
+    private static final String SELECT_FAIL = "SELECT\u672a\u6210\u529f";
 
     // DELETE未成功
     // private static final String DELETE_FAIL = "DELETE\u672a\u6210\u529f";
@@ -137,7 +135,7 @@ public class DataSourceChecker {
 
             if (sourceType.equalsIgnoreCase("MYSQL")) {
                 dbMediaSource.setType(DataMediaType.MYSQL);
-                dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+                dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
             } else if (sourceType.equalsIgnoreCase("ORACLE")) {
                 dbMediaSource.setType(DataMediaType.ORACLE);
                 dbMediaSource.setDriver("oracle.jdbc.driver.OracleDriver");

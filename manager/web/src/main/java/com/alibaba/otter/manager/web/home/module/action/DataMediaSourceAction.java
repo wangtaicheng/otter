@@ -16,8 +16,6 @@
 
 package com.alibaba.otter.manager.web.home.module.action;
 
-import javax.annotation.Resource;
-
 import com.alibaba.citrus.service.form.CustomErrors;
 import com.alibaba.citrus.service.form.Group;
 import com.alibaba.citrus.turbine.Navigator;
@@ -33,17 +31,19 @@ import com.alibaba.otter.shared.common.model.config.data.DataMediaSource;
 import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
 import com.alibaba.otter.shared.common.model.config.data.mq.MqMediaSource;
 
+import javax.annotation.Resource;
+
 public class DataMediaSourceAction extends AbstractAction {
 
     @Resource(name = "dataMediaSourceService")
     private DataMediaSourceService dataMediaSourceService;
 
     @Resource(name = "dataMediaService")
-    private DataMediaService       dataMediaService;
+    private DataMediaService dataMediaService;
 
     /**
      * 添加Channel
-     * 
+     *
      * @param channelInfo
      * @param channelParameterInfo
      * @throws Exception
@@ -58,7 +58,7 @@ public class DataMediaSourceAction extends AbstractAction {
             DbMediaSource dbMediaSource = new DbMediaSource();
             dataMediaSourceInfo.setProperties(dbMediaSource);
             if (dataMediaSource.getType().isMysql()) {
-                dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+                dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
             } else if (dataMediaSource.getType().isOracle()) {
                 dbMediaSource.setDriver("oracle.jdbc.driver.OracleDriver");
             }
@@ -104,7 +104,7 @@ public class DataMediaSourceAction extends AbstractAction {
         dataMediaSourceInfo.setProperties(dbMediaSource);
 
         if (dbMediaSource.getType().isMysql()) {
-            dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+            dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
         } else if (dbMediaSource.getType().isOracle()) {
             dbMediaSource.setDriver("oracle.jdbc.driver.OracleDriver");
         }
