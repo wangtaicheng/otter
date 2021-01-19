@@ -16,17 +16,14 @@
 
 package com.alibaba.otter.node.etl.common.db;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
-import java.util.Date;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.otter.node.etl.BaseDbTest;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
+import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
+import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
+import com.alibaba.otter.shared.common.model.config.data.db.DbDataMedia;
+import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
+import com.alibaba.otter.shared.common.utils.thread.NamedThreadFactory;
 import org.apache.commons.lang.RandomStringUtils;
 import org.jtester.annotations.SpringBeanByName;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
@@ -37,14 +34,12 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testng.annotations.Test;
 
-import com.alibaba.otter.node.etl.BaseDbTest;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
-import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
-import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
-import com.alibaba.otter.shared.common.model.config.data.db.DbDataMedia;
-import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
-import com.alibaba.otter.shared.common.utils.thread.NamedThreadFactory;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
+import java.util.Date;
+import java.util.concurrent.*;
 
 public class DbPerfIntergration extends BaseDbTest {
 
@@ -55,7 +50,7 @@ public class DbPerfIntergration extends BaseDbTest {
     public void test_stack() {
         DbMediaSource dbMediaSource = new DbMediaSource();
         dbMediaSource.setId(1L);
-        dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+        dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
         dbMediaSource.setUsername("otter");
         dbMediaSource.setPassword("otter");
         dbMediaSource.setUrl("jdbc:mysql://127.0.0.1:3306/retl");
@@ -82,12 +77,12 @@ public class DbPerfIntergration extends BaseDbTest {
 
         final CountDownLatch latch = new CountDownLatch(thread);
         ExecutorService executor = new ThreadPoolExecutor(thread,
-            thread,
-            60,
-            TimeUnit.SECONDS,
-            new ArrayBlockingQueue(thread * 2),
-            new NamedThreadFactory("load"),
-            new ThreadPoolExecutor.CallerRunsPolicy());
+                thread,
+                60,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue(thread * 2),
+                new NamedThreadFactory("load"),
+                new ThreadPoolExecutor.CallerRunsPolicy());
 
         for (int sec = 0; sec < minute * 60; sec++) {
             // 执行秒循环
@@ -96,34 +91,38 @@ public class DbPerfIntergration extends BaseDbTest {
                 final int start = nextId + i * batch;
                 executor.submit(new Runnable() {
 
+                    @Override
                     public void run() {
                         try {
                             transactionTemplate.execute(new TransactionCallback() {
 
+                                @Override
                                 public Object doInTransaction(TransactionStatus status) {
                                     JdbcTemplate jdbcTemplate = dbDialect.getJdbcTemplate();
                                     return jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
 
+                                        @Override
                                         public void setValues(PreparedStatement ps, int idx) throws SQLException {
                                             int id = start + idx;
                                             StatementCreatorUtils.setParameterValue(ps, 1, Types.INTEGER, null, id);
                                             StatementCreatorUtils.setParameterValue(ps,
-                                                2,
-                                                Types.VARCHAR,
-                                                null,
-                                                RandomStringUtils.randomAlphabetic(1000));
+                                                    2,
+                                                    Types.VARCHAR,
+                                                    null,
+                                                    RandomStringUtils.randomAlphabetic(1000));
                                             // RandomStringUtils.randomAlphabetic()
                                             long time = new Date().getTime();
                                             StatementCreatorUtils.setParameterValue(ps,
-                                                3,
-                                                Types.TIMESTAMP,
-                                                new Timestamp(time));
+                                                    3,
+                                                    Types.TIMESTAMP,
+                                                    new Timestamp(time));
                                             StatementCreatorUtils.setParameterValue(ps,
-                                                4,
-                                                Types.TIMESTAMP,
-                                                new Timestamp(time));
+                                                    4,
+                                                    Types.TIMESTAMP,
+                                                    new Timestamp(time));
                                         }
 
+                                        @Override
                                         public int getBatchSize() {
                                             return batch;
                                         }

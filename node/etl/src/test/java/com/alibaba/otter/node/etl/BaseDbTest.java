@@ -25,7 +25,7 @@ public class BaseDbTest extends BaseOtterTest {
     public DbDataMedia getMysqlMedia() {
         DbMediaSource dbMediaSource = new DbMediaSource();
         dbMediaSource.setId(10L);
-        dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+        dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
         dbMediaSource.setUsername("xxxxx");
         dbMediaSource.setPassword("xxxxx");
         dbMediaSource.setUrl("jdbc:mysql://127.0.0.1:3306/srf");

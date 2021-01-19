@@ -17,22 +17,18 @@
 package com.alibaba.otter.node.etl.common.datasource;
 
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Properties;
 
 /**
  * 类TestMysqlUnsignedInt.java的实现描述
- * 
+ *
  * @author xiaoqing.zhouxq 2011-12-23 上午10:03:37
  */
 public class TestMysqlUnsignedNumber {
 
     public static void insertNumeric() throws ClassNotFoundException, SQLException {
-        Class.forName("com.mysql.jdbc.Driver");
+        Class.forName("com.mysql.cj.jdbc.Driver");
         Properties from = new Properties();
         from.put("user", "root");
         from.put("password", "root");
@@ -54,7 +50,7 @@ public class TestMysqlUnsignedNumber {
         //        
         //        Thread.sleep(1000L);
 
-        Class.forName("com.mysql.jdbc.Driver");
+        Class.forName("com.mysql.cj.jdbc.Driver");
         Properties from = new Properties();
         from.put("user", "root");
         from.put("password", "root");

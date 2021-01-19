@@ -16,12 +16,14 @@
 
 package com.alibaba.otter.node.etl.common.db;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.alibaba.otter.node.etl.BaseDbTest;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
+import com.alibaba.otter.node.etl.common.db.dialect.SqlTemplate;
+import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
+import com.alibaba.otter.node.etl.common.db.utils.SqlUtils;
+import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
+import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
 import org.apache.ddlutils.model.Table;
 import org.jtester.annotations.SpringBeanByName;
 import org.springframework.dao.DataAccessException;
@@ -34,34 +36,31 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testng.annotations.Test;
 
-import com.alibaba.otter.node.etl.BaseDbTest;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
-import com.alibaba.otter.node.etl.common.db.dialect.SqlTemplate;
-import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
-import com.alibaba.otter.node.etl.common.db.utils.SqlUtils;
-import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
-import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DbDialectIntegration extends BaseDbTest {
 
-    private static final String SCHEMA_NAME    = "test";
-    private static final String TABLE_NAME     = "ljh_demo";
+    private static final String SCHEMA_NAME = "test";
+    private static final String TABLE_NAME = "ljh_demo";
     @SpringBeanByName
-    private DbDialectFactory    dbDialectFactory;
+    private DbDialectFactory dbDialectFactory;
 
-    private String[]            pkColumns      = { "id" };
-    private String[]            columns        = { "name", "enum_value", "bigint_value", "int_value" };
+    private String[] pkColumns = {"id"};
+    private String[] columns = {"name", "enum_value", "bigint_value", "int_value"};
 
-    private String[]            pkColumnValues = { "10" };
+    private String[] pkColumnValues = {"10"};
 
-    private String[]            columnValues   = { "hello", "1", "9223372036854775808", "2147483648" };
+    private String[] columnValues = {"hello", "1", "9223372036854775808", "2147483648"};
 
     @Test(expectedExceptions = RuntimeException.class)
     public void test_mysql() {
         DbMediaSource dbMediaSource = new DbMediaSource();
         dbMediaSource.setId(10L);
-        dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+        dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
         dbMediaSource.setUsername("xxxxx");
         dbMediaSource.setPassword("xxxxx");
         dbMediaSource.setUrl("jdbc:mysql://127.0.0.1:3306");
@@ -77,10 +76,11 @@ public class DbDialectIntegration extends BaseDbTest {
         final SqlTemplate sqlTemplate = dbDialect.getSqlTemplate();
         final JdbcTemplate jdbcTemplate = dbDialect.getJdbcTemplate();
         final TransactionTemplate transactionTemplate = dbDialect.getTransactionTemplate();
-        final int[] pkColumnTypes = { Types.INTEGER };
-        final int[] columnTypes = { Types.VARCHAR, Types.INTEGER, Types.DECIMAL, Types.BIGINT };
+        final int[] pkColumnTypes = {Types.INTEGER};
+        final int[] columnTypes = {Types.VARCHAR, Types.INTEGER, Types.DECIMAL, Types.BIGINT};
         transactionTemplate.execute(new TransactionCallback() {
 
+            @Override
             public Object doInTransaction(TransactionStatus status) {
                 int affect = 0;
                 String sql = null;
@@ -89,9 +89,10 @@ public class DbDialectIntegration extends BaseDbTest {
                 System.out.println(sql);
                 affect = (Integer) jdbcTemplate.execute(sql, new PreparedStatementCallback() {
 
+                    @Override
                     public Object doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
                         doPreparedStatement(ps, dbDialect, toTypes(columnTypes, pkColumnTypes),
-                                            toValues(columnValues, pkColumnValues));
+                                toValues(columnValues, pkColumnValues));
                         return ps.executeUpdate();
                     }
 
@@ -133,7 +134,7 @@ public class DbDialectIntegration extends BaseDbTest {
             String sqlValue = columnValues[i];
             int sqlType = columnTypes[i];
             Object param = SqlUtils.stringToSqlValue(sqlValue, sqlType, SqlUtils.isTextType(sqlType),
-                                                     dbDialect.isEmptyStringNulled());
+                    dbDialect.isEmptyStringNulled());
             switch (sqlType) {
                 case Types.CLOB:
                     if (lobCreator == null) {

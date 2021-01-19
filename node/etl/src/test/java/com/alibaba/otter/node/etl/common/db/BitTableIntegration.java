@@ -16,13 +16,14 @@
 
 package com.alibaba.otter.node.etl.common.db;
 
-import java.io.UnsupportedEncodingException;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.alibaba.otter.node.etl.BaseDbTest;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
+import com.alibaba.otter.node.etl.common.db.dialect.SqlTemplate;
+import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
+import com.alibaba.otter.node.etl.common.db.utils.SqlUtils;
+import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
+import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
 import org.apache.ddlutils.model.Table;
 import org.jtester.annotations.SpringBeanByName;
 import org.springframework.dao.DataAccessException;
@@ -35,34 +36,32 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testng.annotations.Test;
 
-import com.alibaba.otter.node.etl.BaseDbTest;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
-import com.alibaba.otter.node.etl.common.db.dialect.SqlTemplate;
-import com.alibaba.otter.node.etl.common.db.dialect.mysql.MysqlDialect;
-import com.alibaba.otter.node.etl.common.db.utils.SqlUtils;
-import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
-import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
+import java.io.UnsupportedEncodingException;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BitTableIntegration extends BaseDbTest {
 
-    private static final String SCHEMA_NAME    = "test";
-    private static final String TABLE_NAME     = "test_bit";
+    private static final String SCHEMA_NAME = "test";
+    private static final String TABLE_NAME = "test_bit";
     @SpringBeanByName
-    private DbDialectFactory    dbDialectFactory;
+    private DbDialectFactory dbDialectFactory;
 
-    private String[]            pkColumns      = { "id" };
-    private String[]            columns        = { "onebit_value", "bits_values" };
+    private String[] pkColumns = {"id"};
+    private String[] columns = {"onebit_value", "bits_values"};
 
-    private String[]            pkColumnValues = { "3" };
+    private String[] pkColumnValues = {"3"};
 
-    private String[]            columnValues   = { "1", "63" };
+    private String[] columnValues = {"1", "63"};
 
     @Test
     public void test_mysql() throws UnsupportedEncodingException {
         DbMediaSource dbMediaSource = new DbMediaSource();
         dbMediaSource.setId(10L);
-        dbMediaSource.setDriver("com.mysql.jdbc.Driver");
+        dbMediaSource.setDriver("com.mysql.cj.jdbc.Driver");
         dbMediaSource.setUsername("xxxxx");
         dbMediaSource.setPassword("xxxxx");
         dbMediaSource.setUrl("jdbc:mysql://127.0.0.1:3306");
@@ -78,10 +77,11 @@ public class BitTableIntegration extends BaseDbTest {
         final SqlTemplate sqlTemplate = dbDialect.getSqlTemplate();
         final JdbcTemplate jdbcTemplate = dbDialect.getJdbcTemplate();
         final TransactionTemplate transactionTemplate = dbDialect.getTransactionTemplate();
-        final int[] pkColumnTypes = { Types.INTEGER };
-        final int[] columnTypes = { Types.BIT, Types.BIT };
+        final int[] pkColumnTypes = {Types.INTEGER};
+        final int[] columnTypes = {Types.BIT, Types.BIT};
         transactionTemplate.execute(new TransactionCallback() {
 
+            @Override
             public Object doInTransaction(TransactionStatus status) {
                 int affect = 0;
                 String sql = null;
@@ -90,11 +90,12 @@ public class BitTableIntegration extends BaseDbTest {
                 System.out.println(sql);
                 affect = (Integer) jdbcTemplate.execute(sql, new PreparedStatementCallback() {
 
+                    @Override
                     public Object doInPreparedStatement(PreparedStatement ps) throws SQLException, DataAccessException {
                         doPreparedStatement(ps,
-                            dbDialect,
-                            toTypes(columnTypes, pkColumnTypes),
-                            toValues(columnValues, pkColumnValues));
+                                dbDialect,
+                                toTypes(columnTypes, pkColumnTypes),
+                                toValues(columnValues, pkColumnValues));
                         return ps.executeUpdate();
                     }
 
@@ -137,9 +138,9 @@ public class BitTableIntegration extends BaseDbTest {
             String sqlValue = columnValues[i];
             int sqlType = columnTypes[i];
             Object param = SqlUtils.stringToSqlValue(sqlValue,
-                sqlType,
-                SqlUtils.isTextType(sqlType),
-                dbDialect.isEmptyStringNulled());
+                    sqlType,
+                    SqlUtils.isTextType(sqlType),
+                    dbDialect.isEmptyStringNulled());
             switch (sqlType) {
                 case Types.CLOB:
                     if (lobCreator == null) {

@@ -16,16 +16,7 @@
 
 package com.alibaba.otter.node.common.config.impl;
 
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-
 import com.alibaba.otter.node.common.communication.NodeCommmunicationClient;
-import com.alibaba.otter.node.common.config.ConfigClientService;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfig;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigRegistry;
 import com.alibaba.otter.shared.common.model.config.ConfigException;
@@ -38,55 +29,68 @@ import com.alibaba.otter.shared.communication.model.config.FindChannelEvent;
 import com.alibaba.otter.shared.communication.model.config.FindNodeEvent;
 import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * task节点对应的config对象管理服务
- * 
+ *
  * @author jianghang
  */
 public class ConfigClientServiceImpl implements InternalConfigClientService, ArbitrateConfig, InitializingBean {
 
-    private static final String                NID_NAME       = "nid";
-    private static final Long                  DEFAULT_PERIOD = 60 * 1000L;
-    private static final Logger                logger         = LoggerFactory.getLogger(ConfigClientService.class);
+    private static final String NID_NAME = "nid";
+    private static final Long DEFAULT_PERIOD = 60 * 1000L;
+    private static final Logger logger = LoggerFactory.getLogger(ConfigClientServiceImpl.class);
 
-    private Long                               timeout        = DEFAULT_PERIOD;
-    private Long                               nid;
-    private NodeCommmunicationClient           nodeCommmunicationClient;
+    private Long timeout = DEFAULT_PERIOD;
+    private Long nid;
+    private NodeCommmunicationClient nodeCommmunicationClient;
     private RefreshMemoryMirror<Long, Channel> channelCache;
-    private Map<Long, Long>                    channelMapping;                                                     // 将pipelineId映射为channelId
-    private RefreshMemoryMirror<Long, Node>    nodeCache;
+    // 将pipelineId映射为channelId
+    private Map<Long, Long> channelMapping;
+    private RefreshMemoryMirror<Long, Node> nodeCache;
 
-    public ConfigClientServiceImpl(){
+    public ConfigClientServiceImpl() {
         // 注册一下事件处理
         ArbitrateConfigRegistry.regist(this);
     }
 
+    @Override
     public Node currentNode() {
         Node node = nodeCache.get(nid);
         if (node == null) {
             throw new ConfigException("nid:" + nid + " in manager[" + nodeCommmunicationClient.getManagerAddress()
-                                      + "]is not found!");
+                    + "]is not found!");
         }
 
         return node;
     }
 
+    @Override
     public Channel findChannel(Long channelId) {
         return channelCache.get(channelId);
     }
 
+    @Override
     public Channel findChannelByPipelineId(Long pipelineId) {
         Long channelId = channelMapping.get(pipelineId);
         return channelCache.get(channelId);
     }
 
+    @Override
     public Pipeline findOppositePipeline(Long pipelineId) {
         Long channelId = channelMapping.get(pipelineId);
         Channel channel = channelCache.get(channelId);
         List<Pipeline> pipelines = channel.getPipelines();
         for (Pipeline pipeline : pipelines) {
-            if (pipeline.getId().equals(pipelineId) == false) {// 这里假定pipeline只有两个
+            //这里假定pipeline只有两个
+            if (!pipeline.getId().equals(pipelineId)) {
                 return pipeline;
             }
         }
@@ -94,6 +98,7 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
         return null;
     }
 
+    @Override
     public Pipeline findPipeline(Long pipelineId) {
         Long channelId = channelMapping.get(pipelineId);
         Channel channel = channelCache.get(channelId);
@@ -107,10 +112,12 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
         throw new ConfigException("no pipeline for pipelineId[" + pipelineId + "]");
     }
 
+    @Override
     public Node findNode(Long nid) {
         return nodeCache.get(nid);
     }
 
+    @Override
     public void afterPropertiesSet() throws Exception {
         // 获取一下nid变量
         String nid = System.getProperty(NID_NAME);
@@ -122,6 +129,7 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
 
         channelMapping = OtterMigrateMap.makeComputingMap(new Function<Long, Long>() {
 
+            @Override
             public Long apply(Long pipelineId) {
                 // 处理下pipline -> channel映射关系不存在的情况
                 FindChannelEvent event = new FindChannelEvent();
@@ -144,6 +152,7 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
 
         nodeCache = new RefreshMemoryMirror<Long, Node>(timeout, new ComputeFunction<Long, Node>() {
 
+            @Override
             public Node apply(Long key, Node oldValue) {
                 FindNodeEvent event = new FindNodeEvent();
                 event.setNid(key);
@@ -164,6 +173,7 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
 
         channelCache = new RefreshMemoryMirror<Long, Channel>(timeout, new ComputeFunction<Long, Channel>() {
 
+            @Override
             public Channel apply(Long key, Channel oldValue) {
                 FindChannelEvent event = new FindChannelEvent();
                 event.setChannelId(key);
@@ -184,6 +194,7 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
         });
     }
 
+    @Override
     public void createOrUpdateChannel(Channel channel) {
         channelCache.put(channel.getId(), channel);
         updateMapping(channel, null);
