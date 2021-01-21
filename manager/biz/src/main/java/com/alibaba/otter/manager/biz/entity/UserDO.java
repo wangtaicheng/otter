@@ -5,6 +5,7 @@ import com.alibaba.otter.shared.common.model.user.AuthorizeType;
 import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
  * @author jc-wangtc@chinaunicom.cn
  * @since 2021-01-21 08:38:38
  */
-
+@TableName("user")
 public class UserDO implements Serializable {
 
     private static final long serialVersionUID = 2242602757447277939L;
@@ -36,7 +37,7 @@ public class UserDO implements Serializable {
 
     @TableField("realname")
     private String realName;
-    
+
     private LocalDateTime gmtCreate;
 
     private LocalDateTime gmtModified;

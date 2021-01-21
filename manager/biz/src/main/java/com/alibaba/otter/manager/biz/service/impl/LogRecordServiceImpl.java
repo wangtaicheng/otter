@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.otter.manager.biz.dao.LogRecordMapper;
-import com.alibaba.otter.manager.biz.entity.LogRecord;
+import com.alibaba.otter.manager.biz.entity.LogRecordDO;
 import com.alibaba.otter.manager.biz.service.LogRecordService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("logRecordService")
-public class LogRecordServiceImpl extends ServiceImpl<LogRecordMapper, LogRecord> implements LogRecordService {
+public class LogRecordServiceImpl extends ServiceImpl<LogRecordMapper, LogRecordDO> implements LogRecordService {
 
 }

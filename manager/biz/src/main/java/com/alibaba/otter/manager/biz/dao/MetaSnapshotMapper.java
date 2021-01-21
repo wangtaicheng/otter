@@ -1,6 +1,6 @@
 package com.alibaba.otter.manager.biz.dao;
 
-import com.alibaba.otter.manager.biz.entity.MetaSnapshot;
+import com.alibaba.otter.canal.parse.inbound.mysql.tsdb.dao.MetaSnapshotDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2021-01-21 08:38:38
  */
 @Mapper
-public interface MetaSnapshotMapper extends BaseMapper<MetaSnapshot> {
+public interface MetaSnapshotMapper extends BaseMapper<MetaSnapshotDO> {
 
 }

@@ -16,31 +16,30 @@
 
 package com.alibaba.otter.shared.common.model.config.channel;
 
-import java.io.Serializable;
-import java.util.Date;
-import java.util.List;
-
-import org.apache.commons.lang.builder.ToStringBuilder;
-
 import com.alibaba.otter.shared.common.model.config.pipeline.Pipeline;
 import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
+import org.apache.commons.lang.builder.ToStringBuilder;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * channel数据对象
- * 
+ *
  * @author jianghang 2011-8-31 下午07:35:29
  */
 public class Channel implements Serializable {
 
     private static final long serialVersionUID = 2345662422309356370L;
-    private Long              id;                                       // 唯一标示id
-    private String            name;
-    private ChannelStatus     status;
-    private String            description;                              // 描述信息
-    private List<Pipeline>    pipelines;
-    private Date              gmtCreate;
-    private Date              gmtModified;
-    private ChannelParameter  parameters       = new ChannelParameter();
+    private Long id;                                       // 唯一标示id
+    private String name;
+    private ChannelStatus status;
+    private String description;                              // 描述信息
+    private List<Pipeline> pipelines;
+    private LocalDateTime gmtCreate;
+    private LocalDateTime gmtModified;
+    private ChannelParameter parameters = new ChannelParameter();
 
     public Long getId() {
         return id;
@@ -74,19 +73,19 @@ public class Channel implements Serializable {
         this.pipelines = pipelines;
     }
 
-    public Date getGmtCreate() {
+    public LocalDateTime getGmtCreate() {
         return gmtCreate;
     }
 
-    public void setGmtCreate(Date gmtCreate) {
+    public void setGmtCreate(LocalDateTime gmtCreate) {
         this.gmtCreate = gmtCreate;
     }
 
-    public Date getGmtModified() {
+    public LocalDateTime getGmtModified() {
         return gmtModified;
     }
 
-    public void setGmtModified(Date gmtModified) {
+    public void setGmtModified(LocalDateTime gmtModified) {
         this.gmtModified = gmtModified;
     }
 

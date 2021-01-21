@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.otter.manager.biz.dao.ThroughputStatMapper;
-import com.alibaba.otter.manager.biz.entity.ThroughputStat;
+import com.alibaba.otter.manager.biz.entity.ThroughputStatDO;
 import com.alibaba.otter.manager.biz.service.ThroughputStatService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("throughputStatService")
-public class ThroughputStatServiceImpl extends ServiceImpl<ThroughputStatMapper, ThroughputStat> implements ThroughputStatService {
+public class ThroughputStatServiceImpl extends ServiceImpl<ThroughputStatMapper, ThroughputStatDO> implements ThroughputStatService {
 
 }

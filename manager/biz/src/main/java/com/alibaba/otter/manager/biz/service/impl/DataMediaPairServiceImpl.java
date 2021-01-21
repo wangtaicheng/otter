@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.otter.manager.biz.dao.DataMediaPairMapper;
-import com.alibaba.otter.manager.biz.entity.DataMediaPair;
+import com.alibaba.otter.manager.biz.entity.DataMediaPairDO;
 import com.alibaba.otter.manager.biz.service.DataMediaPairService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("dataMediaPairService")
-public class DataMediaPairServiceImpl extends ServiceImpl<DataMediaPairMapper, DataMediaPair> implements DataMediaPairService {
+public class DataMediaPairServiceImpl extends ServiceImpl<DataMediaPairMapper, DataMediaPairDO> implements DataMediaPairService {
 
 }

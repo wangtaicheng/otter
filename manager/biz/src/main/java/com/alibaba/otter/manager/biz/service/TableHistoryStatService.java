@@ -1,7 +1,7 @@
 package com.alibaba.otter.manager.biz.service;
 
+import com.alibaba.otter.manager.biz.entity.TableHistoryStatDO;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.alibaba.otter.manager.biz.entity.TableHistoryStat;
 
 /**
  * (TableHistoryStat)表服务接口
@@ -9,6 +9,6 @@ import com.alibaba.otter.manager.biz.entity.TableHistoryStat;
  * @author jc-wangtc@chinaunicom.cn
  * @since 2021-01-21 08:38:38
  */
-public interface TableHistoryStatService extends IService<TableHistoryStat> {
+public interface TableHistoryStatService extends IService<TableHistoryStatDO> {
 
 }

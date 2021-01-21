@@ -1,6 +1,6 @@
 package com.alibaba.otter.manager.biz.dao;
 
-import com.alibaba.otter.manager.biz.entity.Node;
+import com.alibaba.otter.manager.biz.entity.NodeDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2021-01-21 08:38:38
  */
 @Mapper
-public interface NodeMapper extends BaseMapper<Node> {
+public interface NodeMapper extends BaseMapper<NodeDO> {
 
 }

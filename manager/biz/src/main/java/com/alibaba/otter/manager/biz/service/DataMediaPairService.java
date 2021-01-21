@@ -1,7 +1,7 @@
 package com.alibaba.otter.manager.biz.service;
 
+import com.alibaba.otter.manager.biz.entity.DataMediaPairDO;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.alibaba.otter.manager.biz.entity.DataMediaPair;
 
 /**
  * (DataMediaPair)表服务接口
@@ -9,6 +9,6 @@ import com.alibaba.otter.manager.biz.entity.DataMediaPair;
  * @author jc-wangtc@chinaunicom.cn
  * @since 2021-01-21 08:38:38
  */
-public interface DataMediaPairService extends IService<DataMediaPair> {
+public interface DataMediaPairService extends IService<DataMediaPairDO> {
 
 }

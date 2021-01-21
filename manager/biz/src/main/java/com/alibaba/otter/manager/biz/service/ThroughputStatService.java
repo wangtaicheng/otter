@@ -1,7 +1,7 @@
 package com.alibaba.otter.manager.biz.service;
 
+import com.alibaba.otter.manager.biz.entity.ThroughputStatDO;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.alibaba.otter.manager.biz.entity.ThroughputStat;
 
 /**
  * (ThroughputStat)表服务接口
@@ -9,6 +9,6 @@ import com.alibaba.otter.manager.biz.entity.ThroughputStat;
  * @author jc-wangtc@chinaunicom.cn
  * @since 2021-01-21 08:38:38
  */
-public interface ThroughputStatService extends IService<ThroughputStat> {
+public interface ThroughputStatService extends IService<ThroughputStatDO> {
 
 }

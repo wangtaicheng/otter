@@ -16,18 +16,10 @@
 
 package com.alibaba.otter.manager.web.home.module.screen;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
-
 import com.alibaba.citrus.turbine.Context;
 import com.alibaba.citrus.turbine.dataresolver.Param;
-import com.alibaba.otter.manager.biz.config.alarm.AlarmRuleService;
-import com.alibaba.otter.manager.biz.config.channel.ChannelService;
+import com.alibaba.otter.manager.biz.service.AlarmRuleService;
+import com.alibaba.otter.manager.biz.service.ChannelService;
 import com.alibaba.otter.manager.biz.statistics.delay.DelayStatService;
 import com.alibaba.otter.manager.biz.statistics.throughput.ThroughputStatService;
 import com.alibaba.otter.manager.biz.statistics.throughput.param.ThroughputCondition;
@@ -41,22 +33,29 @@ import com.alibaba.otter.shared.common.model.statistics.delay.DelayStat;
 import com.alibaba.otter.shared.common.model.statistics.throughput.ThroughputStat;
 import com.alibaba.otter.shared.common.model.statistics.throughput.ThroughputType;
 
+import javax.annotation.Resource;
+import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class PipelineList {
 
     @Resource(name = "channelService")
-    private ChannelService        channelService;
+    private ChannelService channelService;
 
     @Resource(name = "delayStatService")
-    private DelayStatService      delayStatService;
+    private DelayStatService delayStatService;
 
     @Resource(name = "arbitrateViewService")
-    private ArbitrateViewService  arbitrateViewService;
+    private ArbitrateViewService arbitrateViewService;
 
     @Resource(name = "throughputStatService")
     private ThroughputStatService throughputStatService;
 
     @Resource(name = "alarmRuleService")
-    private AlarmRuleService      alarmRuleService;
+    private AlarmRuleService alarmRuleService;
 
     public void execute(@Param("channelId") Long channelId, @Param("pipelineId") Long pipelineId, HttpSession session,
                         Context context) throws Exception {
@@ -95,8 +94,9 @@ public class PipelineList {
             throughputStats.put(pipeline.getId(), throughputStat);
             List<AlarmRule> alarmRules = alarmRuleService.getAlarmRules(pipeline.getId());
             alarmRuleStats.put(pipeline.getId(), alarmRules);
-            PositionEventData positionData = arbitrateViewService.getCanalCursor(pipeline.getParameters().getDestinationName(),
-                                                                                 pipeline.getParameters().getMainstemClientId());
+            PositionEventData positionData = arbitrateViewService
+                    .getCanalCursor(pipeline.getParameters().getDestinationName(),
+                            pipeline.getParameters().getMainstemClientId());
             positionDatas.put(pipeline.getId(), positionData);
         }
 

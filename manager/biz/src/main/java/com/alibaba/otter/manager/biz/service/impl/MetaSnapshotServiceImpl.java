@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.alibaba.otter.canal.parse.inbound.mysql.tsdb.dao.MetaSnapshotDO;
 import com.alibaba.otter.manager.biz.dao.MetaSnapshotMapper;
-import com.alibaba.otter.manager.biz.entity.MetaSnapshot;
 import com.alibaba.otter.manager.biz.service.MetaSnapshotService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("metaSnapshotService")
-public class MetaSnapshotServiceImpl extends ServiceImpl<MetaSnapshotMapper, MetaSnapshot> implements MetaSnapshotService {
+public class MetaSnapshotServiceImpl extends ServiceImpl<MetaSnapshotMapper, MetaSnapshotDO> implements MetaSnapshotService {
 
 }

@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.otter.manager.biz.dao.PipelineMapper;
-import com.alibaba.otter.manager.biz.entity.Pipeline;
+import com.alibaba.otter.manager.biz.entity.PipelineDO;
 import com.alibaba.otter.manager.biz.service.PipelineService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("pipelineService")
-public class PipelineServiceImpl extends ServiceImpl<PipelineMapper, Pipeline> implements PipelineService {
+public class PipelineServiceImpl extends ServiceImpl<PipelineMapper, PipelineDO> implements PipelineService {
 
 }

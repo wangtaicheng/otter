@@ -1,6 +1,6 @@
 package com.alibaba.otter.manager.biz.dao;
 
-import com.alibaba.otter.manager.biz.entity.SystemParameter;
+import com.alibaba.otter.manager.biz.entity.SystemParameterDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2021-01-21 08:38:38
  */
 @Mapper
-public interface SystemParameterMapper extends BaseMapper<SystemParameter> {
+public interface SystemParameterMapper extends BaseMapper<SystemParameterDO> {
 
 }

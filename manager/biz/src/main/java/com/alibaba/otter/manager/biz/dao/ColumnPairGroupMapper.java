@@ -1,6 +1,6 @@
 package com.alibaba.otter.manager.biz.dao;
 
-import com.alibaba.otter.manager.biz.entity.ColumnPairGroup;
+import com.alibaba.otter.manager.biz.entity.DataColumnPairGroupDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2021-01-21 08:38:38
  */
 @Mapper
-public interface ColumnPairGroupMapper extends BaseMapper<ColumnPairGroup> {
+public interface ColumnPairGroupMapper extends BaseMapper<DataColumnPairGroupDO> {
 
 }

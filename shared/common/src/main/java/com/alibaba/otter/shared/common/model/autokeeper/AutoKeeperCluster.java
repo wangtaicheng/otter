@@ -16,29 +16,28 @@
 
 package com.alibaba.otter.shared.common.model.autokeeper;
 
-import java.io.Serializable;
-import java.util.Date;
-import java.util.List;
-
+import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * zk集群监控对象
- * 
+ *
  * @author jianghang 2012-9-21 下午01:54:17
  * @version 4.1.0
  */
 public class AutoKeeperCluster implements Serializable {
 
     private static final long serialVersionUID = 6065960677054678659L;
-    private Long              id;
-    private String            clusterName;
-    private List<String>      serverList;                             // 机器列表
-    private String            description;                            // 描述
-    private Date              gmtCreate;
-    private Date              gmtModified;
+    private Long id;
+    private String clusterName;
+    private List<String> serverList;                             // 机器列表
+    private String description;                            // 描述
+    private LocalDateTime gmtCreate;
+    private LocalDateTime gmtModified;
 
     public Long getId() {
         return id;
@@ -72,22 +71,23 @@ public class AutoKeeperCluster implements Serializable {
         this.description = description;
     }
 
-    public Date getGmtCreate() {
+    public LocalDateTime getGmtCreate() {
         return gmtCreate;
     }
 
-    public void setGmtCreate(Date gmtCreate) {
+    public void setGmtCreate(LocalDateTime gmtCreate) {
         this.gmtCreate = gmtCreate;
     }
 
-    public Date getGmtModified() {
+    public LocalDateTime getGmtModified() {
         return gmtModified;
     }
 
-    public void setGmtModified(Date gmtModified) {
+    public void setGmtModified(LocalDateTime gmtModified) {
         this.gmtModified = gmtModified;
     }
 
+    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, OtterToStringStyle.DEFAULT_STYLE);
     }

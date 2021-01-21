@@ -1,6 +1,6 @@
 package com.alibaba.otter.manager.biz.dao;
 
-import com.alibaba.otter.manager.biz.entity.LogRecord;
+import com.alibaba.otter.manager.biz.entity.LogRecordDO;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2021-01-21 08:38:38
  */
 @Mapper
-public interface LogRecordMapper extends BaseMapper<LogRecord> {
+public interface LogRecordMapper extends BaseMapper<LogRecordDO> {
 
 }

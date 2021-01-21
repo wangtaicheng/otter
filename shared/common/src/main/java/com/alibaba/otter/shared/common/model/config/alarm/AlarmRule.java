@@ -16,11 +16,11 @@
 
 package com.alibaba.otter.shared.common.model.config.alarm;
 
-import java.io.Serializable;
-import java.util.Date;
-
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * @author simon 2012-8-23 上午11:04:07
@@ -30,19 +30,19 @@ public class AlarmRule implements Serializable {
 
     private static final long serialVersionUID = 7500180945297613382L;
 
-    private Long              id;
-    private Long              pipelineId;
-    private AlarmRuleStatus   status;
-    private MonitorName       monitorName;
-    private String            receiverKey;
-    private String            matchValue;
-    private Long              intervalTime;
-    private Date              pauseTime;                              // 标准
-    private Integer           recoveryThresold;                       // 自动恢复阀值
-    private Boolean           autoRecovery;                           // 是否需要自动恢复
-    private String            description;
-    private Date              gmtCreate;
-    private Date              gmtModified;
+    private Long id;
+    private Long pipelineId;
+    private AlarmRuleStatus status;
+    private MonitorName monitorName;
+    private String receiverKey;
+    private String matchValue;
+    private Long intervalTime;
+    private LocalDateTime pauseTime;                              // 标准
+    private Integer recoveryThresold;                       // 自动恢复阀值
+    private Boolean autoRecovery;                           // 是否需要自动恢复
+    private String description;
+    private LocalDateTime gmtCreate;
+    private LocalDateTime gmtModified;
 
     public Long getId() {
         return id;
@@ -108,19 +108,19 @@ public class AlarmRule implements Serializable {
         this.description = description;
     }
 
-    public Date getGmtCreate() {
+    public LocalDateTime getGmtCreate() {
         return gmtCreate;
     }
 
-    public void setGmtCreate(Date gmtCreate) {
+    public void setGmtCreate(LocalDateTime gmtCreate) {
         this.gmtCreate = gmtCreate;
     }
 
-    public Date getGmtModified() {
+    public LocalDateTime getGmtModified() {
         return gmtModified;
     }
 
-    public void setGmtModified(Date gmtModified) {
+    public void setGmtModified(LocalDateTime gmtModified) {
         this.gmtModified = gmtModified;
     }
 
@@ -140,16 +140,16 @@ public class AlarmRule implements Serializable {
         this.recoveryThresold = recoveryThresold;
     }
 
-    public Date getPauseTime() {
+    public LocalDateTime getPauseTime() {
         return pauseTime;
     }
 
-    public void setPauseTime(Date pauseTime) {
+    public void setPauseTime(LocalDateTime pauseTime) {
         this.pauseTime = pauseTime;
     }
 
     public boolean isPaused() {
-        return pauseTime != null && new Date().before(pauseTime);
+        return pauseTime != null && LocalDateTime.now().isBefore(pauseTime);
     }
 
     @Override

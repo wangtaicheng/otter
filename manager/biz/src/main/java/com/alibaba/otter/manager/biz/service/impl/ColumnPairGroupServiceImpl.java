@@ -1,9 +1,9 @@
 package com.alibaba.otter.manager.biz.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.alibaba.otter.manager.biz.dao.ColumnPairGroupMapper;
-import com.alibaba.otter.manager.biz.entity.ColumnPairGroup;
+import com.alibaba.otter.manager.biz.entity.DataColumnPairGroupDO;
 import com.alibaba.otter.manager.biz.service.ColumnPairGroupService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +13,6 @@ import org.springframework.stereotype.Service;
  * @since 2021-01-21 08:38:38
  */
 @Service("columnPairGroupService")
-public class ColumnPairGroupServiceImpl extends ServiceImpl<ColumnPairGroupMapper, ColumnPairGroup> implements ColumnPairGroupService {
+public class ColumnPairGroupServiceImpl extends ServiceImpl<ColumnPairGroupMapper, DataColumnPairGroupDO> implements ColumnPairGroupService {
 
 }
