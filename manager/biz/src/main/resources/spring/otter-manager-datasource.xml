@@ -1,45 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
-<beans default-autowire="byName">
-	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
-        <property name="driverClassName" value="${otter.database.driver.class.name}" />
-        <property name="url" value="${otter.database.driver.url}" />
-		<property name="username" value="${otter.database.driver.username}" />
-		<property name="password" value="${otter.database.driver.password}" />
-        <property name="maxActive"><value>20</value></property>
-        <property name="initialSize"><value>1</value></property>
-        <property name="maxWait"><value>60000</value></property>
-        <property name="maxIdle"><value>20</value></property> <!-- 可以和maxActive保持一致 -->
-        <property name="minIdle"><value>1</value></property>  <!-- 可以和initialSize保持一致 -->
-        <property name="removeAbandoned"><value>true</value></property>
-        <property name="removeAbandonedTimeout"><value>180</value></property>
-        <property name="timeBetweenEvictionRunsMillis"><value>60000</value></property>
-        <property name="minEvictableIdleTimeMillis"><value>180000</value></property>
-        <property name="connectionProperties"><value>useUnicode=true;characterEncoding=utf-8</value></property>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${otter.database.driver.class.name}"/>
+        <property name="url" value="${otter.database.driver.url}"/>
+        <property name="username" value="${otter.database.driver.username}"/>
+        <property name="password" value="${otter.database.driver.password}"/>
+        <property name="maxActive" value="20"/>
+        <property name="initialSize" value="1"/>
+        <property name="maxWait" value="60000"/>
+        <property name="maxIdle" value="20"/> <!-- 可以和maxActive保持一致 -->
+        <property name="minIdle" value="1"/>  <!-- 可以和initialSize保持一致 -->
+        <property name="removeAbandoned" value="true"/>
+        <property name="removeAbandonedTimeout" value="180"/>
+        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <property name="minEvictableIdleTimeMillis" value="180000"/>
+        <property name="connectionProperties" value="useUnicode=true;characterEncoding=utf-8"/>
         <!-- sql检查配置,在idle空闲线程检查时,检查链接有效性，丢弃无效的链接,实现自动重连-->
         <!-- 注意使用cobar时,因为走了F5进行负载,F5默认5分钟会关闭空闲链接,所以需要通过心跳SQL保证数据库链接不被异常关闭 -->
-        <property name="testWhileIdle"><value>true</value></property>
-        <property name="testOnBorrow"><value>false</value></property>
-        <property name="testOnReturn"><value>false</value></property>
-        <property name="validationQuery"><value>SELECT @@version</value></property>
-        <property name="numTestsPerEvictionRun"><value>-1</value></property>
-	</bean>
-	
-	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="testWhileIdle" value="true"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <property name="validationQuery" value="SELECT @@version"/>
+        <property name="numTestsPerEvictionRun" value="-1"/>
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
         <property name="dataSource" ref="dataSource"/>
-	</bean>
-	
-	<bean id="transactionTemplate" class="org.springframework.transaction.support.TransactionTemplate"> 
-		<property name="transactionManager" ref="transactionManager" />
-	</bean>
-	
-	<bean id="dataSourceCreator" class="com.alibaba.otter.manager.biz.common.DataSourceCreator" >
-		<property name="dataSourceHandlers">
-			<list>
-				<ref bean="mediaPushDataSourceHandler" />
-			</list>
-		</property>
-	</bean>
-	
-	<bean id="mediaPushDataSourceHandler" class="com.alibaba.otter.common.push.datasource.media.MediaPushDataSourceHandler" scope="singleton" />
+    </bean>
+
+    <bean id="transactionTemplate" class="org.springframework.transaction.support.TransactionTemplate">
+        <property name="transactionManager" ref="transactionManager"/>
+    </bean>
+
+    <bean id="dataSourceCreator" class="com.alibaba.otter.manager.biz.common.DataSourceCreator">
+        <property name="dataSourceHandlers">
+            <list>
+                <ref bean="mediaPushDataSourceHandler"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="mediaPushDataSourceHandler"
+          class="com.alibaba.otter.common.push.datasource.media.MediaPushDataSourceHandler"/>
+
+    <!-- SqlSessionFactory Config -->
+    <bean id="sqlSessionFactory" class="com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="configuration" ref="configuration"/>
+        <property name="mapperLocations" value="classpath:mappers/*.xml"/>
+        <property name="globalConfig" ref="globalConfig"/>
+        <property name="plugins">
+            <array>
+                <ref bean="mybatisPlusInterceptor"/>
+            </array>
+        </property>
+    </bean>
+    <bean id="configuration" class="com.baomidou.mybatisplus.core.MybatisConfiguration">
+    </bean>
+    <bean id="mybatisPlusInterceptor" class="com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor">
+        <property name="interceptors">
+            <list>
+                <ref bean="paginationInnerInterceptor"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="paginationInnerInterceptor"
+          class="com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor">
+        <constructor-arg name="dbType" value="MYSQL"/>
+    </bean>
+    <bean id="countSqlParser"
+          class="com.baomidou.mybatisplus.extension.plugins.pagination.optimize.JsqlParserCountOptimize">
+        <property name="optimizeJoin" value="true"/>
+    </bean>
+    <bean id="globalConfig" class="com.baomidou.mybatisplus.core.config.GlobalConfig">
+        <property name="dbConfig" ref="dbConfig"/>
+    </bean>
+    <bean id="dbConfig" class="com.baomidou.mybatisplus.core.config.GlobalConfig.DbConfig">
+    </bean>
+    <!-- MyBatis Mapper Scan Config  -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.alibaba.otter.manager.biz.**.mapper"/>
+    </bean>
 </beans>

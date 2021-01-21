@@ -16,9 +16,6 @@
 
 package com.alibaba.otter.manager.web.home.module.action;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
-
 import com.alibaba.citrus.service.form.CustomErrors;
 import com.alibaba.citrus.service.form.Group;
 import com.alibaba.citrus.service.requestcontext.parser.ParameterParser;
@@ -33,15 +30,17 @@ import com.alibaba.otter.manager.web.common.WebConstant;
 import com.alibaba.otter.shared.common.model.user.User;
 import com.alibaba.otter.shared.common.utils.SecurityUtils;
 
+import javax.annotation.Resource;
+import javax.servlet.http.HttpSession;
+
 /**
  * 类UserAction.java的实现描述：TODO 类实现描述
- * 
+ *
  * @author simon 2011-11-10 下午07:14:50
  */
 public class UserAction extends AbstractAction {
 
-    @Resource(name = "userService")
-    private UserService userService;
+    @Resource(name = "userService") private UserService userService;
 
     public void doAdd(@FormGroup("addUserInfo") Group userInfo, Navigator nav,
                       @FormField(name = "formUserError", group = "addUserInfo") CustomErrors err) {
@@ -72,7 +71,7 @@ public class UserAction extends AbstractAction {
         }
 
         try {
-            userService.updataUser(user);
+            userService.updateUser(user);
         } catch (RepeatConfigureException rce) {
             err.setMessage("invalidUser");
             return;
