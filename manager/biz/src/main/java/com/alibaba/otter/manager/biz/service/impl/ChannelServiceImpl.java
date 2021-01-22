@@ -141,10 +141,12 @@ public class ChannelServiceImpl extends ServiceImpl<ChannelMapper, ChannelDO> im
     /**
      * 拿到channel总数进行分页
      */
+    @Override
     public int getCount() {
         return count();
     }
 
+    @Override
     public int getCount(Map condition) {
         return count(buildLambdaQuery(condition));
     }

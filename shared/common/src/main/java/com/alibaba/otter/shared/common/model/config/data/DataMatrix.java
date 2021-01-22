@@ -16,29 +16,28 @@
 
 package com.alibaba.otter.shared.common.model.config.data;
 
-import java.io.Serializable;
-import java.util.Date;
-
+import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * media主备配置
- * 
+ *
  * @author jianghang 2013-4-18 下午12:22:42
  * @version 4.1.8
  */
 public class DataMatrix implements Serializable {
 
     private static final long serialVersionUID = 4577662145949358550L;
-    private Long              id;                                     // 唯一标示id
-    private String            groupKey;                               // groupKey
-    private String            master;
-    private String            slave;
-    private String            description;                            // 描述
-    private Date              gmtCreate;                              // 创建时间
-    private Date              gmtModified;                            // 修改时间
+    private Long id;                                     // 唯一标示id
+    private String groupKey;                               // groupKey
+    private String master;
+    private String slave;
+    private String description;                            // 描述
+    private LocalDateTime gmtCreate;                              // 创建时间
+    private LocalDateTime gmtModified;                            // 修改时间
 
     public Long getId() {
         return id;
@@ -80,22 +79,23 @@ public class DataMatrix implements Serializable {
         this.description = description;
     }
 
-    public Date getGmtCreate() {
+    public LocalDateTime getGmtCreate() {
         return gmtCreate;
     }
 
-    public void setGmtCreate(Date gmtCreate) {
+    public void setGmtCreate(LocalDateTime gmtCreate) {
         this.gmtCreate = gmtCreate;
     }
 
-    public Date getGmtModified() {
+    public LocalDateTime getGmtModified() {
         return gmtModified;
     }
 
-    public void setGmtModified(Date gmtModified) {
+    public void setGmtModified(LocalDateTime gmtModified) {
         this.gmtModified = gmtModified;
     }
 
+    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, OtterToStringStyle.DEFAULT_STYLE);
     }

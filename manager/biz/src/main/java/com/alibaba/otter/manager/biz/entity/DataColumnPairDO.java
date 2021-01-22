@@ -1,6 +1,7 @@
 package com.alibaba.otter.manager.biz.entity;
 
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 
@@ -20,9 +21,10 @@ public class DataColumnPairDO implements Serializable {
     @TableId("ID")
     private Long id;
 
-    private String sourceColumn;
-
-    private String targetColumn;
+    @TableField("source_column")
+    private String sourceColumnName;
+    @TableField("target_column")
+    private String targetColumnName;
 
     private Long dataMediaPairId;
 
@@ -38,20 +40,20 @@ public class DataColumnPairDO implements Serializable {
         this.id = id;
     }
 
-    public String getSourceColumn() {
-        return sourceColumn;
+    public String getSourceColumnName() {
+        return sourceColumnName;
     }
 
-    public void setSourceColumn(String sourceColumn) {
-        this.sourceColumn = sourceColumn;
+    public void setSourceColumnName(String sourceColumnName) {
+        this.sourceColumnName = sourceColumnName;
     }
 
-    public String getTargetColumn() {
-        return targetColumn;
+    public String getTargetColumnName() {
+        return targetColumnName;
     }
 
-    public void setTargetColumn(String targetColumn) {
-        this.targetColumn = targetColumn;
+    public void setTargetColumnName(String targetColumnName) {
+        this.targetColumnName = targetColumnName;
     }
 
     public Long getDataMediaPairId() {

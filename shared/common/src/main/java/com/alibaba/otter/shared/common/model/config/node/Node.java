@@ -16,30 +16,29 @@
 
 package com.alibaba.otter.shared.common.model.config.node;
 
-import java.io.Serializable;
-import java.util.Date;
-
+import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
-import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * Node数据对象
- * 
+ *
  * @author jianghang 2011-8-19 上午10:19:40
  */
 public class Node implements Serializable {
 
     private static final long serialVersionUID = 1427704645257914286L;
-    private Long              id;                                     // 唯一标示id
-    private String            name;                                   // 机器名字
-    private String            ip;                                     // 机器ip
-    private Long              port;                                   // 和manager对应的通讯端口
-    private NodeStatus        status;                                 // 对应状态
-    private String            description;                            // 详细描述
-    private NodeParameter     parameters       = new NodeParameter(); // node对应参数信息
-    private Date              gmtCreate;                              // 创建时间
-    private Date              gmtModified;                            // 修改时间
+    private Long id;                                     // 唯一标示id
+    private String name;                                   // 机器名字
+    private String ip;                                     // 机器ip
+    private Long port;                                   // 和manager对应的通讯端口
+    private NodeStatus status;                                 // 对应状态
+    private String description;                            // 详细描述
+    private NodeParameter parameters = new NodeParameter(); // node对应参数信息
+    private LocalDateTime gmtCreate;                              // 创建时间
+    private LocalDateTime gmtModified;                            // 修改时间
 
     public Long getId() {
         return id;
@@ -97,19 +96,19 @@ public class Node implements Serializable {
         this.parameters = parameters;
     }
 
-    public Date getGmtCreate() {
+    public LocalDateTime getGmtCreate() {
         return gmtCreate;
     }
 
-    public void setGmtCreate(Date gmtCreate) {
+    public void setGmtCreate(LocalDateTime gmtCreate) {
         this.gmtCreate = gmtCreate;
     }
 
-    public Date getGmtModified() {
+    public LocalDateTime getGmtModified() {
         return gmtModified;
     }
 
-    public void setGmtModified(Date gmtModified) {
+    public void setGmtModified(LocalDateTime gmtModified) {
         this.gmtModified = gmtModified;
     }
 
