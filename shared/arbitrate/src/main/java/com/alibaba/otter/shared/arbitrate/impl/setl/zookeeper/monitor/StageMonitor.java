@@ -16,27 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-
-import org.I0Itec.zkclient.IZkChildListener;
-import org.I0Itec.zkclient.IZkConnection;
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.apache.commons.lang.ClassUtils;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.KeeperException.NoNodeException;
-import org.apache.zookeeper.Watcher.Event.EventType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StageComparator;
@@ -47,47 +26,68 @@ import com.alibaba.otter.shared.arbitrate.impl.zookeeper.AsyncWatcher;
 import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZooKeeperx;
+import org.I0Itec.zkclient.IZkChildListener;
+import org.I0Itec.zkclient.IZkConnection;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.apache.commons.lang.ClassUtils;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.NoNodeException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 
 /**
  * 所有process节点变化的监控
- * 
+ *
  * <pre>
  * 监控内容：
  *  1. process列表的删除/新增
  *  2. 每个process下的子节点(setl + end + error)节点的变化信息
- *  
+ *
  * 数据获取：
  *  1. 定义{@linkplain StageListener}
  * 接口，并注册。即可监听监控内容的数据变化
- * 
+ *
  * 注意点：
  *  stageListener返回的processId为历史数据，可能出现以下情况：
  *  1. 历史已就绪的process，因为系统的error错误或者人为的关闭同步队列，会导致当前的processId被删除
  *  2. 此时该processId仍会被返回，需要在各个event中最后进行检查。判断Permit,是否出现error节点,process是否被删除等
- * 
+ *
  * </pre>
- * 
+ *
  * @author jianghang 2011-9-21 下午01:16:06
  * @version 4.0.0
  */
 public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
 
-    private static final Logger              logger            = LoggerFactory.getLogger(StageMonitor.class);
+    private static final Logger logger = LoggerFactory.getLogger(StageMonitor.class);
 
-    private ExecutorService                  arbitrateExecutor;
-    private ZkClientx                        zookeeper         = ZooKeeperClient.getInstance();
-    private volatile List<Long>              currentProcessIds = new ArrayList<Long>();                                       // 当前的处于监控中的processId列表
-    private volatile Map<Long, List<String>> currentStages     = new ConcurrentHashMap<Long, List<String>>();                 // 记录下stages信息
+    private ExecutorService arbitrateExecutor;
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    private volatile List<Long> currentProcessIds = new ArrayList<Long>();                                       // 当前的处于监控中的processId列表
+    private volatile Map<Long, List<String>> currentStages = new ConcurrentHashMap<Long, List<String>>();                 // 记录下stages信息
 
-    private List<StageListener>              listeners         = Collections.synchronizedList(new ArrayList<StageListener>());
+    private List<StageListener> listeners = Collections.synchronizedList(new ArrayList<StageListener>());
 
-    private IZkChildListener                 processListener;
+    private IZkChildListener processListener;
 
-    public StageMonitor(Long pipelineId){
+    public StageMonitor(Long pipelineId) {
         super(pipelineId);
 
         processListener = new IZkChildListener() {
 
+            @Override
             public void handleChildChange(String parentPath, List<String> currentChilds) throws Exception {
                 if (currentChilds != null) {
                     initStage(currentChilds);
@@ -102,6 +102,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
         MonitorScheduler.register(this);
     }
 
+    @Override
     public void destory() {
         super.destory();
         if (logger.isDebugEnabled()) {
@@ -114,6 +115,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
         MonitorScheduler.unRegister(this);
     }
 
+    @Override
     public void reload() {
         try {
             if (logger.isDebugEnabled()) {
@@ -233,8 +235,8 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
             }
 
             if (logger.isDebugEnabled()) {
-                logger.debug("pipeline[{}] old processIds{},current processIds{}", new Object[] { getPipelineId(),
-                        currentProcessIds, processIds });
+                logger.debug("pipeline[{}] old processIds{},current processIds{}", new Object[]{getPipelineId(),
+                        currentProcessIds, processIds});
             }
 
             currentProcessIds = processIds; // 切换引用，需设置为volatile保证线程安全&可见性
@@ -279,8 +281,8 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
     private boolean initProcessStage(Long processId, List<String> currentStages) {
         Collections.sort(currentStages, new StageComparator());
         if (logger.isDebugEnabled()) {
-            logger.debug("pipeline[{}] processId[{}] with stage{}", new Object[] { getPipelineId(), processId,
-                    currentStages });
+            logger.debug("pipeline[{}] processId[{}] with stage{}", new Object[]{getPipelineId(), processId,
+                    currentStages});
         }
 
         this.currentStages.put(processId, currentStages);// 更新下stage数据
@@ -354,8 +356,9 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
             ZooKeeper orginZk = ((ZooKeeperx) connection).getZookeeper();
             List<String> currentStages = orginZk.getChildren(path, new AsyncWatcher() {
 
+                @Override
                 public void asyncProcess(WatchedEvent event) {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     if (isStop()) {
                         return;
                     }
@@ -367,9 +370,9 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
 
                     // 出现session expired/connection losscase下，会触发所有的watcher响应，同时老的watcher会继续保留，所以会导致出现多次watcher响应
                     boolean dataChanged = event.getType() == EventType.NodeDataChanged
-                                          || event.getType() == EventType.NodeDeleted
-                                          || event.getType() == EventType.NodeCreated
-                                          || event.getType() == EventType.NodeChildrenChanged;
+                            || event.getType() == EventType.NodeDeleted
+                            || event.getType() == EventType.NodeCreated
+                            || event.getType() == EventType.NodeChildrenChanged;
                     if (dataChanged) {
                         // boolean reply = initStage(processId);
                         // if (reply == false) {// 出现过load后就不需要再监听变化，剩下的就是节点的删除操作
@@ -399,7 +402,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
     public void addListener(StageListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] add listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.add(listener);
@@ -408,7 +411,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
     public void removeListener(StageListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] remove listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.remove(listener);
@@ -419,8 +422,9 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
             // 异步处理
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     listener.processChanged(processIds);
                 }
             });
@@ -432,8 +436,9 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
             // 异步处理
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     listener.stageChannged(processId, stages);
                 }
             });
@@ -445,8 +450,9 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
             // 异步处理
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     listener.processTermined(processId);
                 }
             });

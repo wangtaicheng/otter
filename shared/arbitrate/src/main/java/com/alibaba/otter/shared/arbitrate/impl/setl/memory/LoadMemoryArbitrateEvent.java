@@ -16,12 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.memory;
 
-import java.util.Date;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.LoadArbitrateEvent;
@@ -31,18 +25,22 @@ import com.alibaba.otter.shared.arbitrate.model.TerminEventData;
 import com.alibaba.otter.shared.arbitrate.model.TerminEventData.TerminType;
 import com.alibaba.otter.shared.common.model.config.channel.ChannelStatus;
 import com.alibaba.otter.shared.common.model.config.enums.StageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * 基于memory的仲裁器实现
- * 
+ *
  * @author jianghang 2012-9-27 下午10:05:08
  * @version 4.1.0
  */
 public class LoadMemoryArbitrateEvent implements LoadArbitrateEvent {
 
-    private static final Logger        logger = LoggerFactory.getLogger(LoadMemoryArbitrateEvent.class);
+    private static final Logger logger = LoggerFactory.getLogger(LoadMemoryArbitrateEvent.class);
     private TerminMemoryArbitrateEvent terminEvent;
 
+    @Override
     public EtlEventData await(Long pipelineId) throws InterruptedException {
         Assert.notNull(pipelineId);
 
@@ -57,8 +55,8 @@ public class LoadMemoryArbitrateEvent implements LoadArbitrateEvent {
             return stageController.getLastData(processId);
         } else {
             logger.warn("pipelineId[{}] load ignore processId[{}] by status[{}],rollback now",
-                new Object[] { pipelineId, processId,
-                    status });
+                    pipelineId, processId,
+                    status);
             // 进行ROLLBACK，触发释放下processId，信号量及EventStore里面的读位置点。
             // 1)因为MemoryStageController的load是等待processId最小值完成Tranform才继续，如果这里不释放，会一直卡死等待
             // 2)信号量消耗完selectTask任务停止，3)EventStore里面的读位置点不回置，如果正好队列已经满并且读取了最后，BINLOG新的数据进不来
@@ -67,12 +65,15 @@ public class LoadMemoryArbitrateEvent implements LoadArbitrateEvent {
         }
     }
 
+    @Override
     public void single(EtlEventData data) {
         Assert.notNull(data);
-        data.setEndTime(new Date().getTime());// 返回当前时间
+        // 返回当前时间
+        data.setEndTime(System.currentTimeMillis());
         MemoryStageController stageController = ArbitrateFactory.getInstance(data.getPipelineId(),
-                                                                             MemoryStageController.class);
-        boolean result = stageController.single(StageType.LOAD, data);// 通知下一个节点
+                MemoryStageController.class);
+        // 通知下一个节点
+        boolean result = stageController.single(StageType.LOAD, data);
         if (result) {// 可能已经被rollback了，需要直接忽略
             // 调用Termin信号
             TerminEventData termin = new TerminEventData();

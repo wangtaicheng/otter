@@ -16,17 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.rpc.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-
-import org.I0Itec.zkclient.IZkChildListener;
-import org.apache.commons.lang.ClassUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
@@ -34,32 +23,43 @@ import com.alibaba.otter.shared.arbitrate.impl.setl.monitor.Monitor;
 import com.alibaba.otter.shared.arbitrate.impl.setl.monitor.MonitorScheduler;
 import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.IZkChildListener;
+import org.apache.commons.lang.ClassUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * process节点列表的监控，{@linkplain stageMonitor}的简化版本，只关注了process节点的变化，不再关心process的子节点stage的变化，减少了对zk watcher的依赖
- * 
+ *
  * <pre>
  * 1. 获取当前的process列表，用于控制并行度
  * 2. 获取当前的最小的processId，用于控制load的按顺序载入
  * </pre>
- * 
+ *
  * @author jianghang 2012-9-28 下午09:35:00
  * @version 4.1.0
  */
 public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
 
-    private static final Logger   logger            = LoggerFactory.getLogger(ProcessMonitor.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProcessMonitor.class);
 
-    private ExecutorService       arbitrateExecutor;
-    private ZkClientx             zookeeper         = ZooKeeperClient.getInstance();
-    private volatile List<Long>   currentProcessIds = new ArrayList<Long>();                                         // 当前的处于监控中的processId列表
-    private List<ProcessListener> listeners         = Collections.synchronizedList(new ArrayList<ProcessListener>());
-    private IZkChildListener      processListener;
+    private ExecutorService arbitrateExecutor;
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    private volatile List<Long> currentProcessIds = new ArrayList<Long>();                                         // 当前的处于监控中的processId列表
+    private List<ProcessListener> listeners = Collections.synchronizedList(new ArrayList<ProcessListener>());
+    private IZkChildListener processListener;
 
-    public ProcessMonitor(Long pipelineId){
+    public ProcessMonitor(Long pipelineId) {
         super(pipelineId);
         processListener = new IZkChildListener() {
 
+            @Override
             public void handleChildChange(String parentPath, List<String> currentChilds) throws Exception {
                 if (currentChilds != null) {
                     initProcess(currentChilds);
@@ -74,6 +74,7 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
         MonitorScheduler.register(this);
     }
 
+    @Override
     public void reload() {
         try {
             if (logger.isDebugEnabled()) {
@@ -103,6 +104,7 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
         return currentProcessIds;
     }
 
+    @Override
     public void destory() {
         super.destory();
         if (logger.isDebugEnabled()) {
@@ -137,8 +139,8 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
         }
         Collections.sort(processIds); // 排序一下
         if (logger.isDebugEnabled()) {
-            logger.debug("pipeline[{}] old processIds{},current processIds{}", new Object[] { getPipelineId(),
-                    currentProcessIds, processIds });
+            logger.debug("pipeline[{}] old processIds{},current processIds{}", new Object[]{getPipelineId(),
+                    currentProcessIds, processIds});
         }
 
         // if (!processIds.equals(currentProcessIds) || currentProcessIds.isEmpty()) {// 不相同，说明有变化
@@ -153,7 +155,7 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
     public void addListener(ProcessListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] add listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.add(listener);
@@ -162,7 +164,7 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
     public void removeListener(ProcessListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] remove listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.remove(listener);
@@ -173,8 +175,9 @@ public class ProcessMonitor extends ArbitrateLifeCycle implements Monitor {
             // 异步处理
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     listener.processChanged(processIds);
                 }
             });

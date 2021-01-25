@@ -16,16 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper;
 
-import java.util.Date;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.I0Itec.zkclient.exception.ZkNodeExistsException;
-import org.apache.zookeeper.CreateMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
@@ -43,16 +33,23 @@ import com.alibaba.otter.shared.common.model.config.node.Node;
 import com.alibaba.otter.shared.common.model.config.pipeline.PipelineParameter.ArbitrateMode;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.I0Itec.zkclient.exception.ZkNodeExistsException;
+import org.apache.zookeeper.CreateMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * 基于zookeeper的仲裁器调度
- * 
+ *
  * @author jianghang 2011-8-9 下午05:10:50
  */
 public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
 
-    private static final Logger logger    = LoggerFactory.getLogger(SelectZooKeeperArbitrateEvent.class);
-    private ZkClientx           zookeeper = ZooKeeperClient.getInstance();
+    private static final Logger logger = LoggerFactory.getLogger(SelectZooKeeperArbitrateEvent.class);
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
 
     // private TerminArbitrateEvent terminEvent;
 
@@ -63,6 +60,7 @@ public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
      * 2. 开始阻塞获取符合条件的processId，创建空的EventData对象,添加next node信息后直接返回
      * </pre>
      */
+    @Override
     public EtlEventData await(Long pipelineId) throws InterruptedException {
         Assert.notNull(pipelineId);
 
@@ -79,7 +77,7 @@ public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
                 EtlEventData eventData = new EtlEventData();
                 eventData.setPipelineId(pipelineId);
                 eventData.setProcessId(processId);
-                eventData.setStartTime(new Date().getTime());// 返回当前时间
+                eventData.setStartTime(System.currentTimeMillis());// 返回当前时间
 
                 Node node = LoadBalanceFactory.getNextExtractNode(pipelineId);// 获取下一个处理节点信息
                 if (node == null) {// 没有后端节点
@@ -102,8 +100,8 @@ public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
                 throw new ArbitrateException("Select_await", e.getMessage(), e);
             }
         } else {
-            logger.warn("pipelineId[{}] select ignore processId[{}] by status[{}]", new Object[] { pipelineId,
-                    processId, status });
+            logger.warn("pipelineId[{}] select ignore processId[{}] by status[{}]", new Object[]{pipelineId,
+                    processId, status});
             // add by ljh 2013-02-01
             // 遇到一个bug:
             // a. 某台机器发起了一个RESTART指令，然后开始删除process列表
@@ -121,9 +119,10 @@ public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
      * 算法:
      * 1. 创建对应的selected节点,标志selected已完成
      * </pre>
-     * 
+     *
      * @param pipelineId 同步流id
      */
+    @Override
     public void single(EtlEventData data) {
         Assert.notNull(data);
         String path = StagePathUtils.getSelectStage(data.getPipelineId(), data.getProcessId());
@@ -135,11 +134,11 @@ public class SelectZooKeeperArbitrateEvent implements SelectArbitrateEvent {
         } catch (ZkNoNodeException e) {
             // process节点不存在，出现了rollback/shutdown操作，直接忽略
             logger.warn("pipelineId[{}] select ignore processId[{}] single by data:{}",
-                        new Object[] { data.getPipelineId(), data.getProcessId(), data });
+                    new Object[]{data.getPipelineId(), data.getProcessId(), data});
         } catch (ZkNodeExistsException e) {
             // process节点已存在，出现了ConnectionLoss retry操作
             logger.warn("pipelineId[{}] select ignore processId[{}] single by data:{}",
-                        new Object[] { data.getPipelineId(), data.getProcessId(), data });
+                    new Object[]{data.getPipelineId(), data.getProcessId(), data});
         } catch (ZkException e) {
             throw new ArbitrateException("Select_single", e.getMessage(), e);
         }

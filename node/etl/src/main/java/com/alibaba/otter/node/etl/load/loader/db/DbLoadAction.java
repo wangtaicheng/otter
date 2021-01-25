@@ -141,8 +141,14 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                     // 按I/U/D进行归并处理
                     DbLoadData loadData = new DbLoadData();
                     doBefore(items, context, loadData);
+                    loadData.getTables().forEach(tableLoadData -> {
+                        tableLoadData.getUpadateDatas().forEach(u -> {
+                            System.out.println(u.getSql());
+                        });
+                    });
                     // 执行load操作
                     doLoad(context, loadData);
+
                     controller.single(weight.intValue());
                     logger.debug("##end load for weight:{}", weight);
                 }

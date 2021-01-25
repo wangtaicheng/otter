@@ -16,12 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.rpc;
 
-import java.util.Date;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.LoadArbitrateEvent;
@@ -34,20 +28,24 @@ import com.alibaba.otter.shared.arbitrate.model.TerminEventData.TerminType;
 import com.alibaba.otter.shared.common.model.config.channel.ChannelStatus;
 import com.alibaba.otter.shared.common.model.config.enums.StageType;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * 基于rpc方式实现的load调度
- * 
+ *
  * @author jianghang 2012-9-29 上午10:59:24
  * @version 4.1.0
  */
 public class LoadRpcArbitrateEvent implements LoadArbitrateEvent {
 
-    private static final Logger     logger    = LoggerFactory.getLogger(LoadRpcArbitrateEvent.class);
+    private static final Logger logger = LoggerFactory.getLogger(LoadRpcArbitrateEvent.class);
     private TerminRpcArbitrateEvent terminEvent;
-    private ZkClientx               zookeeper = ZooKeeperClient.getInstance();
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
     private RpcStageEventDispatcher rpcStageEventDispatcher;
 
+    @Override
     public EtlEventData await(Long pipelineId) throws InterruptedException {
         Assert.notNull(pipelineId);
 
@@ -72,16 +70,19 @@ public class LoadRpcArbitrateEvent implements LoadArbitrateEvent {
                 }
             }
 
-            logger.warn("pipelineId[{}] load ignore processId[{}] by status[{}]", new Object[] { pipelineId, processId,
-                    status });
+            logger.warn("pipelineId[{}] load ignore processId[{}] by status[{}]", new Object[]{pipelineId, processId,
+                    status});
             return await(pipelineId);// 递归调用
         }
     }
 
+    @Override
     public void single(final EtlEventData data) {
         Assert.notNull(data);
-        data.setEndTime(new Date().getTime());// 返回当前时间
-        boolean result = rpcStageEventDispatcher.single(StageType.LOAD, data);// 通知下一个节点，下一个节点也肯定会是自己
+        // 返回当前时间
+        data.setEndTime(System.currentTimeMillis());
+        // 通知下一个节点，下一个节点也肯定会是自己
+        boolean result = rpcStageEventDispatcher.single(StageType.LOAD, data);
 
         if (result) {
             // 直接异步处理termin，更快速的返回, modify by ljh at 2013-02-25
@@ -89,6 +90,7 @@ public class LoadRpcArbitrateEvent implements LoadArbitrateEvent {
             TerminExecutor executor = ArbitrateFactory.getInstance(data.getPipelineId(), TerminExecutor.class);
             executor.submit(new Runnable() {
 
+                @Override
                 public void run() {
                     // 调用Termin信号
                     TerminEventData termin = new TerminEventData();

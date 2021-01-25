@@ -127,11 +127,10 @@ public class DbLoadMerger {
                     mergeEventData.getOldKeys().clear();// 清空oldkeys，insert记录不需要
                     result.put(rowKey, mergeEventData);
                 } else if (oldEventData.getEventType() == EventType.UPDATE) {
-                    // 删除当前变更数据老主键的记录.
-                    result.remove(oldKey);
-
                     // 如果上一条变更是update的，把上一条存在而这一条不存在的数据拷贝到这一条中
                     EventData mergeEventData = replaceColumnValue(eventData, oldEventData);
+                    // 删除当前变更数据老主键的记录.
+                    result.remove(oldKey);
                     result.put(rowKey, mergeEventData);
                 } else {
                     throw new LoadException("delete(has old pks) + update impossible happed!");
@@ -216,7 +215,9 @@ public class DbLoadMerger {
         newColumns.addAll(temp);
         Collections.sort(newColumns, new EventColumnIndexComparable()); // 排序
         // 把上一次变更的旧主键传递到这次变更的旧主键.
-        newEventData.setOldKeys(oldEventData.getOldKeys());
+        if (!oldEventData.getOldKeys().isEmpty()) {
+            newEventData.setOldKeys(oldEventData.getOldKeys());
+        }
         if (oldEventData.getSyncConsistency() != null) {
             newEventData.setSyncConsistency(oldEventData.getSyncConsistency());
         }

@@ -16,25 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import org.I0Itec.zkclient.IZkDataListener;
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkInterruptedException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.I0Itec.zkclient.exception.ZkNodeExistsException;
-import org.apache.commons.lang.ClassUtils;
-import org.apache.zookeeper.CreateMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
@@ -49,37 +30,56 @@ import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.lock.BooleanMutex;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
 import com.google.common.collect.Lists;
+import org.I0Itec.zkclient.IZkDataListener;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkInterruptedException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.I0Itec.zkclient.exception.ZkNodeExistsException;
+import org.apache.commons.lang.ClassUtils;
+import org.apache.zookeeper.CreateMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 主备切换控制器，active的只有一位，所有的standy都有平等的选择权
- * 
+ *
  * <pre>
  * 1. active一旦产生，出现瞬断，在规定的时间内，其享有优先权
  * 2. active一旦产生，如果主动释放其active权利，其他的standby的节点就有机会立即参与选举
  * </pre>
- * 
+ *
  * @author jianghang 2012-10-1 下午02:19:22
  * @version 4.1.0
  */
 public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
 
-    private static final Logger        logger       = LoggerFactory.getLogger(MainstemMonitor.class);
-    private ZkClientx                  zookeeper    = ZooKeeperClient.getInstance();
-    private ScheduledExecutorService   delayExector = Executors.newScheduledThreadPool(1);
-    private int                        delayTime    = 5;
+    private static final Logger logger = LoggerFactory.getLogger(MainstemMonitor.class);
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    private ScheduledExecutorService delayExector = Executors.newScheduledThreadPool(1);
+    private int delayTime = 5;
     private volatile MainStemEventData activeData;
-    private IZkDataListener            dataListener;
-    private BooleanMutex               mutex        = new BooleanMutex(false);
-    private volatile boolean           release      = false;
-    private List<MainstemListener>     listeners    = Collections.synchronizedList(new ArrayList<MainstemListener>());
+    private IZkDataListener dataListener;
+    private BooleanMutex mutex = new BooleanMutex(false);
+    private volatile boolean release = false;
+    private List<MainstemListener> listeners = Collections.synchronizedList(new ArrayList<MainstemListener>());
 
-    public MainstemMonitor(Long pipelineId){
+    public MainstemMonitor(Long pipelineId) {
         super(pipelineId);
         // initMainstem();
         dataListener = new IZkDataListener() {
 
+            @Override
             public void handleDataChange(String dataPath, Object data) throws Exception {
-                MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                 MainStemEventData mainStemData = JsonUtils.unmarshalFromByte((byte[]) data, MainStemEventData.class);
                 if (!isMine(mainStemData.getNid())) {
                     mutex.set(false);
@@ -93,8 +93,9 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
                 activeData = (MainStemEventData) mainStemData;
             }
 
+            @Override
             public void handleDataDeleted(String dataPath) throws Exception {
-                MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                 mutex.set(false);
                 if (!release && isMine(activeData.getNid())) {
                     // 如果上一次active的状态就是本机，则即时触发一下active抢占
@@ -106,6 +107,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
                     // 否则就是等待delayTime，避免因网络瞬端或者zk异常，导致出现频繁的切换操作
                     delayExector.schedule(new Runnable() {
 
+                        @Override
                         public void run() {
                             initMainstem();
                         }
@@ -120,6 +122,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
         MonitorScheduler.register(this, 5 * 60 * 1000L, 5 * 60 * 1000L); // 5分钟处理一次
     }
 
+    @Override
     public void reload() {
         if (logger.isDebugEnabled()) {
             logger.debug("## reload mainstem pipeline[{}]", getPipelineId());
@@ -170,6 +173,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
         }
     }
 
+    @Override
     public void destory() {
         super.destory();
 
@@ -199,7 +203,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
 
     /**
      * 阻塞等待自己成为active，如果自己成为active，立马返回
-     * 
+     *
      * @throws InterruptedException
      */
     public void waitForActive() throws InterruptedException {

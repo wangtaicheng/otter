@@ -16,11 +16,11 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.zookeeper.lock;
 
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReentrantLock;
-
+import com.alibaba.otter.shared.arbitrate.impl.zookeeper.AsyncWatcher;
+import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
+import com.alibaba.otter.shared.common.utils.lock.BooleanMutex;
+import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import com.alibaba.otter.shared.common.utils.zookeeper.ZooKeeperx;
 import org.I0Itec.zkclient.IZkConnection;
 import org.I0Itec.zkclient.exception.ZkException;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
@@ -34,23 +34,22 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.otter.shared.arbitrate.impl.zookeeper.AsyncWatcher;
-import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
-import com.alibaba.otter.shared.common.utils.lock.BooleanMutex;
-import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
-import com.alibaba.otter.shared.common.utils.zookeeper.ZooKeeperx;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 实现一个基于zookeeper的分布式锁 <br/>
  * document : <br/>
  * <a href="http://zookeeper.apache.org/doc/trunk/recipes.html">http://zookeeper.apache.org/doc/trunk/recipes.html</a>
- * 
+ *
  * <pre>
  * 使用注意：
  *  传统的{@linkplain ReentrantLock}使用有所区别，ReentrantLock主要用于空只单进程多线程之间的调度，所以要求每个线程使用同一个ReentrantLock实例
  *  而{@linkplain DistributedLock}主要是用于控制多进程的调度，所以如果需要被用来控制多线程时，需要使用不同的DistributedLock实例对象。
  *  <strong>因此单个DistributedLock实例在多个线程中进行lock/unlock操作时会有线程安全问题!!</strong>
- *  
+ *
  * 使用例子：
  * <code>
  *         DistributedLock lock = new DistributedLock("/lock/");
@@ -70,26 +69,27 @@ import com.alibaba.otter.shared.common.utils.zookeeper.ZooKeeperx;
  *         }
  * </code>
  * </pre>
- * 
+ *
  * @author jianghang 2011-9-29 上午11:16:07
  * @version 4.0.0
  */
 public class DistributedLock {
 
-    private static final Logger  logger    = LoggerFactory.getLogger(DistributedLock.class);
-    private static final byte[]  data      = { 0x12, 0x34 };
+    private static final Logger logger = LoggerFactory.getLogger(DistributedLock.class);
+    private static final byte[] DATA = {0x12, 0x34};
     // private static final Long DEFAULT_TIMEOUT_PERIOD = 60 * 1000L;
-    private ZkClientx            zookeeper = ZooKeeperClient.getInstance();
-    private final String         root;                                                      // 根节点路径
-    private String               id;
-    private LockNode             idName;
-    private String               ownerId;
-    private String               lastChildId;
-    private Throwable            other     = null;
-    private KeeperException      exception = null;
+    private final ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    // 根节点路径
+    private final String root;
+    private String id;
+    private LockNode idName;
+    private String ownerId;
+    private String lastChildId;
+    private Throwable other = null;
+    private KeeperException exception = null;
     private InterruptedException interrupt = null;
 
-    public DistributedLock(String root){
+    public DistributedLock(String root) {
         this.root = root;
         ensureExists(root);
     }
@@ -97,6 +97,7 @@ public class DistributedLock {
     /**
      * 尝试获取锁操作，阻塞式可被中断
      */
+    
     public void lock() throws InterruptedException, KeeperException {
         // 可能初始化的时候就失败了
         if (exception != null) {
@@ -146,7 +147,7 @@ public class DistributedLock {
 
     /**
      * 尝试获取锁对象, 不会阻塞
-     * 
+     *
      * @throws InterruptedException
      * @throws KeeperException
      */
@@ -199,7 +200,7 @@ public class DistributedLock {
                 return;
             }
 
-            zookeeper.create(path, data, CreateMode.PERSISTENT);
+            zookeeper.create(path, DATA, CreateMode.PERSISTENT);
         } catch (ZkInterruptedException e) {
             Thread.currentThread().interrupt();
             interrupt = (InterruptedException) e.getCause();
@@ -241,7 +242,7 @@ public class DistributedLock {
                     long sessionId = getSessionId();
                     String prefix = "x-" + sessionId + "-";
                     // 如果第一次，则创建一个节点
-                    String path = zookeeper.create(root + "/" + prefix, data, CreateMode.EPHEMERAL_SEQUENTIAL);
+                    String path = zookeeper.create(root + "/" + prefix, DATA, CreateMode.EPHEMERAL_SEQUENTIAL);
                     int index = path.lastIndexOf("/");
                     id = StringUtils.substring(path, index + 1);
                     idName = new LockNode(id);
@@ -285,6 +286,7 @@ public class DistributedLock {
                             ZooKeeper orginZk = ((ZooKeeperx) connection).getZookeeper();
                             Stat stat = orginZk.exists(root + "/" + lastChildId, new AsyncWatcher() {
 
+                                @Override
                                 public void asyncProcess(WatchedEvent event) {
                                     if (!mutex.state()) { // 避免重复获取lock
                                         acquireLock(mutex);

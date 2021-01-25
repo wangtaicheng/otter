@@ -16,14 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper;
 
-import java.util.Date;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
@@ -38,22 +30,27 @@ import com.alibaba.otter.shared.arbitrate.model.TerminEventData.TerminType;
 import com.alibaba.otter.shared.common.model.config.channel.ChannelStatus;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * 关注transformed节点，创建loaded节点
- * 
+ *
+ * @author jianghang 2011-8-9 下午05:10:50
  * @version 4.0.3
- * 
+ *
  * <pre>
  * 1. 去除对应的DistributedLock的操作，减少中美同步时的latency. 每次DistributedLock操作都会涉及中美zk集群的交互，延迟在300ms
- * 
+ *
  * </pre>
- * @author jianghang 2011-8-9 下午05:10:50
  */
 public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
 
-    private static final Logger           logger    = LoggerFactory.getLogger(LoadZooKeeperArbitrateEvent.class);
-    private ZkClientx                     zookeeper = ZooKeeperClient.getInstance();
+    private static final Logger logger = LoggerFactory.getLogger(LoadZooKeeperArbitrateEvent.class);
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
     private TerminZooKeeperArbitrateEvent terminEvent;
 
     // private Map<Long, DistributedLock> locks = new ConcurrentHashMap<Long,
@@ -68,6 +65,7 @@ public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
      * 4. 获取Select传递的EventData数据，添加next node信息后直接返回
      * </pre>
      */
+    @Override
     public EtlEventData await(Long pipelineId) throws InterruptedException {
         Assert.notNull(pipelineId);
         PermitMonitor permitMonitor = ArbitrateFactory.getInstance(pipelineId, PermitMonitor.class);
@@ -104,8 +102,8 @@ public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
                     throw e;
                 }
             } else {
-                logger.warn("pipelineId[{}] load ignore processId[{}] by status[{}]", new Object[] { pipelineId,
-                        processId, status });
+                logger.warn("pipelineId[{}] load ignore processId[{}] by status[{}]", new Object[]{pipelineId,
+                        processId, status});
                 // try {
                 // lock.unlock();// 出现任何异常解除lock
                 // } catch (KeeperException e) {
@@ -134,9 +132,10 @@ public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
      * 算法:
      * 1. 创建对应的loaded节点,标志load已完成
      * </pre>
-     * 
+     *
      * @param pipelineId 同步流id
      */
+    @Override
     public void single(EtlEventData data) {
         Assert.notNull(data);
         try {
@@ -156,7 +155,7 @@ public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
             // // ignore
             // }
 
-            data.setEndTime(new Date().getTime());// 返回当前时间
+            data.setEndTime(System.currentTimeMillis());// 返回当前时间
 
             // 调用Termin信号
             TerminEventData termin = new TerminEventData();
@@ -190,7 +189,7 @@ public class LoadZooKeeperArbitrateEvent implements LoadArbitrateEvent {
      * 算法:
      * 1. load出现异常，解除load锁定，并发送对应的termin信号
      * </pre>
-     * 
+     *
      * @param pipelineId 同步流id
      */
     public void release(Long pipelineId) {

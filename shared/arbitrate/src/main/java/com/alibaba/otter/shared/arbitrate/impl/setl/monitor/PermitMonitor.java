@@ -16,19 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-
-import org.I0Itec.zkclient.IZkDataListener;
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.apache.commons.lang.ClassUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
@@ -40,46 +27,60 @@ import com.alibaba.otter.shared.common.model.config.channel.ChannelStatus;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.lock.BooleanMutex;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.IZkDataListener;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.apache.commons.lang.ClassUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * 同步任务状态的监控
- * 
+ *
  * <pre>
  * 监控数据内容：
  * 1. channel的status状态
  * 2. 当前pipeline的mainStem状态 &　反向同步的pipeline的mainStem状态
  * </pre>
- * 
+ *
  * @author jianghang
  */
 public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
 
-    private static final Logger      logger                 = LoggerFactory.getLogger(PermitMonitor.class);
+    private static final Logger logger = LoggerFactory.getLogger(PermitMonitor.class);
 
-    private ZkClientx                zookeeper              = ZooKeeperClient.getInstance();
-    private ChannelStatus            channelStatus          = ChannelStatus.STOP;                                           // 标识channel的状态
-    private MainStemEventData.Status mainStemStatus         = MainStemEventData.Status.TAKEING;                             // 当前pipeline的mainStem状态
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    private ChannelStatus channelStatus = ChannelStatus.STOP;                                           // 标识channel的状态
+    private MainStemEventData.Status mainStemStatus = MainStemEventData.Status.TAKEING;                             // 当前pipeline的mainStem状态
     private MainStemEventData.Status oppositeMainStemStatus = MainStemEventData.Status.TAKEING;                             // 反方向的pipeline的mainStem状态
 
-    private ExecutorService          arbitrateExecutor;
-    private BooleanMutex             permitMutex            = new BooleanMutex(false);                                      // 控制器
-    private BooleanMutex             channelMutex           = new BooleanMutex(false);
-    private List<PermitListener>     listeners              = Collections.synchronizedList(new ArrayList<PermitListener>());
-    private volatile boolean         existOpposite          = false;
-    private IZkDataListener          channelDataListener;
-    private IZkDataListener          mainstemDataListener;
-    private IZkDataListener          oppositeMainstemDataListener;
+    private ExecutorService arbitrateExecutor;
+    private BooleanMutex permitMutex = new BooleanMutex(false);                                      // 控制器
+    private BooleanMutex channelMutex = new BooleanMutex(false);
+    private List<PermitListener> listeners = Collections.synchronizedList(new ArrayList<PermitListener>());
+    private volatile boolean existOpposite = false;
+    private IZkDataListener channelDataListener;
+    private IZkDataListener mainstemDataListener;
+    private IZkDataListener oppositeMainstemDataListener;
 
-    public PermitMonitor(Long pipelineId){
+    public PermitMonitor(Long pipelineId) {
         super(pipelineId);
         existOpposite = (ArbitrateConfigUtils.getOppositePipeline(getPipelineId()) != null);
         // 开始同步
         channelDataListener = new IZkDataListener() {
 
+            @Override
             public void handleDataChange(String dataPath, Object data) throws Exception {
                 initChannelStatus((byte[]) data);
             }
 
+            @Override
             public void handleDataDeleted(String dataPath) throws Exception {
                 channelStatus = ChannelStatus.STOP;
                 permitSem();
@@ -90,10 +91,12 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
 
         mainstemDataListener = new IZkDataListener() {
 
+            @Override
             public void handleDataChange(String dataPath, Object data) throws Exception {
                 initMainStemStatus((byte[]) data);
             }
 
+            @Override
             public void handleDataDeleted(String dataPath) throws Exception {
                 // mainstem节点挂了后，状态直接修改为taking
                 mainStemStatus = MainStemEventData.Status.TAKEING;
@@ -111,10 +114,12 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
         if (existOpposite) {
             oppositeMainstemDataListener = new IZkDataListener() {
 
+                @Override
                 public void handleDataChange(String dataPath, Object data) throws Exception {
                     initOppositeMainStemStatus((byte[]) data);
                 }
 
+                @Override
                 public void handleDataDeleted(String dataPath) throws Exception {
                     // mainstem节点挂了后，状态直接修改为taking
                     oppositeMainStemStatus = MainStemEventData.Status.TAKEING;
@@ -130,6 +135,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
         MonitorScheduler.register(this);
     }
 
+    @Override
     public void reload() {
         if (logger.isDebugEnabled()) {
             logger.debug("## reload Permit pipeline[{}]", getPipelineId());
@@ -162,6 +168,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
 
     }
 
+    @Override
     public void destory() {
         super.destory();
 
@@ -243,7 +250,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
 
     /**
      * 阻塞等待允许授权处理, 支持线程中断信号
-     * 
+     *
      * @return
      */
     public void waitForPermit() throws InterruptedException {
@@ -252,7 +259,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
 
     /**
      * 阻塞等待允许channel的授权处理, 支持线程中断信号
-     * 
+     *
      * @throws InterruptedException
      */
     public void waitForChannelPermit() throws InterruptedException {
@@ -485,7 +492,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
     public void addListener(PermitListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] add listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.add(listener);
@@ -494,7 +501,7 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
     public void removeListener(PermitListener listener) {
         if (logger.isDebugEnabled()) {
             logger.debug("## pipeline[{}] remove listener [{}]", getPipelineId(),
-                         ClassUtils.getShortClassName(listener.getClass()));
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.remove(listener);
@@ -505,8 +512,9 @@ public class PermitMonitor extends ArbitrateLifeCycle implements Monitor {
             // 异步处理
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
-                    MDC.put(ArbitrateConstants.splitPipelineLogFileKey, String.valueOf(getPipelineId()));
+                    MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                     listener.processChanged(isPermit);
                 }
             });

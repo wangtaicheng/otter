@@ -16,14 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.rpc;
 
-import java.util.Date;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
@@ -41,19 +33,25 @@ import com.alibaba.otter.shared.common.model.config.node.Node;
 import com.alibaba.otter.shared.common.model.config.pipeline.PipelineParameter.ArbitrateMode;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
 
 /**
  * 基于rpc模式的select实现, process的持久化控制还是依赖于zookeeper，只是改变了原先s/e/t/l之间的通讯方式，由zookeeper watcher改为rpc
- * 
+ *
  * @author jianghang 2012-9-28 下午09:32:04
  * @version 4.1.0
  */
 public class SelectRpcArbitrateEvent implements SelectArbitrateEvent {
 
-    private static final Logger     logger    = LoggerFactory.getLogger(SelectRpcArbitrateEvent.class);
-    private ZkClientx               zookeeper = ZooKeeperClient.getInstance();
+    private static final Logger logger = LoggerFactory.getLogger(SelectRpcArbitrateEvent.class);
+    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
     private RpcStageEventDispatcher rpcStageEventDispatcher;
 
+    @Override
     public EtlEventData await(Long pipelineId) throws InterruptedException {
         Assert.notNull(pipelineId);
 
@@ -61,7 +59,7 @@ public class SelectRpcArbitrateEvent implements SelectArbitrateEvent {
         permitMonitor.waitForPermit();// 阻塞等待授权
 
         SelectProcessListener selectProcessListener = ArbitrateFactory.getInstance(pipelineId,
-                                                                                   SelectProcessListener.class);
+                SelectProcessListener.class);
         Long processId = selectProcessListener.waitForProcess(); // 符合条件的processId
 
         ChannelStatus status = permitMonitor.getChannelPermit();
@@ -70,7 +68,7 @@ public class SelectRpcArbitrateEvent implements SelectArbitrateEvent {
                 EtlEventData eventData = new EtlEventData();
                 eventData.setPipelineId(pipelineId);
                 eventData.setProcessId(processId);
-                eventData.setStartTime(new Date().getTime());// 返回当前时间
+                eventData.setStartTime(System.currentTimeMillis());// 返回当前时间
 
                 Node node = LoadBalanceFactory.getNextExtractNode(pipelineId);// 获取下一个处理节点信息
                 if (node == null) {// 没有后端节点
@@ -93,8 +91,7 @@ public class SelectRpcArbitrateEvent implements SelectArbitrateEvent {
                 throw new ArbitrateException("Select_await", e.getMessage(), e);
             }
         } else {
-            logger.warn("pipelineId[{}] select ignore processId[{}] by status[{}]", new Object[] { pipelineId,
-                    processId, status });
+            logger.warn("pipelineId[{}] select ignore processId[{}] by status[{}]", pipelineId, processId, status);
             // add by ljh 2013-02-01
             // 遇到一个bug:
             // a. 某台机器发起了一个RESTART指令，然后开始删除process列表
@@ -107,6 +104,7 @@ public class SelectRpcArbitrateEvent implements SelectArbitrateEvent {
         }
     }
 
+    @Override
     public void single(EtlEventData data) {
         Assert.notNull(data);
         rpcStageEventDispatcher.single(StageType.SELECT, data);

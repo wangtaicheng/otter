@@ -24,8 +24,8 @@ import com.alibaba.otter.shared.common.model.config.channel.ChannelParameter.Syn
 import com.alibaba.otter.shared.common.model.config.parameter.SystemParameter;
 import com.alibaba.otter.shared.common.model.config.parameter.SystemParameter.RetrieverType;
 import com.alibaba.otter.shared.common.utils.OtterToStringStyle;
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.springframework.beans.BeanUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.io.Serializable;
