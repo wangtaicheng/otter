@@ -24,10 +24,8 @@ import com.alibaba.otter.shared.common.model.config.channel.Channel;
 import com.alibaba.otter.shared.common.model.config.node.Node;
 import com.alibaba.otter.shared.common.model.config.pipeline.Pipeline;
 import com.alibaba.otter.shared.common.utils.cache.RefreshMemoryMirror;
-import com.alibaba.otter.shared.common.utils.cache.RefreshMemoryMirror.ComputeFunction;
 import com.alibaba.otter.shared.communication.model.config.FindChannelEvent;
 import com.alibaba.otter.shared.communication.model.config.FindNodeEvent;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -127,70 +125,58 @@ public class ConfigClientServiceImpl implements InternalConfigClientService, Arb
 
         this.nid = Long.valueOf(nid);
 
-        channelMapping = OtterMigrateMap.makeComputingMap(new Function<Long, Long>() {
-
-            @Override
-            public Long apply(Long pipelineId) {
-                // 处理下pipline -> channel映射关系不存在的情况
-                FindChannelEvent event = new FindChannelEvent();
-                event.setPipelineId(pipelineId);
-                try {
-                    Object obj = nodeCommmunicationClient.callManager(event);
-                    if (obj != null && obj instanceof Channel) {
-                        Channel channel = (Channel) obj;
-                        updateMapping(channel, pipelineId);// 排除下自己
-                        channelCache.put(channel.getId(), channel);// 更新下channelCache
-                        return channel.getId();
-                    }
-                } catch (Exception e) {
-                    logger.error("call_manager_error", event.toString(), e);
+        channelMapping = OtterMigrateMap.makeComputingMap(pipelineId -> {
+            // 处理下pipline -> channel映射关系不存在的情况
+            FindChannelEvent event = new FindChannelEvent();
+            event.setPipelineId(pipelineId);
+            try {
+                Object obj = nodeCommmunicationClient.callManager(event);
+                if (obj instanceof Channel) {
+                    Channel channel = (Channel) obj;
+                    updateMapping(channel, pipelineId);// 排除下自己
+                    channelCache.put(channel.getId(), channel);// 更新下channelCache
+                    return channel.getId();
                 }
-
-                throw new ConfigException("No Such Channel by pipelineId[" + pipelineId + "]");
+            } catch (Exception e) {
+                logger.error("call_manager_error{}", event, e);
             }
+
+            throw new ConfigException("No Such Channel by pipelineId[" + pipelineId + "]");
         });
 
-        nodeCache = new RefreshMemoryMirror<Long, Node>(timeout, new ComputeFunction<Long, Node>() {
-
-            @Override
-            public Node apply(Long key, Node oldValue) {
-                FindNodeEvent event = new FindNodeEvent();
-                event.setNid(key);
-                try {
-                    Object obj = nodeCommmunicationClient.callManager(event);
-                    if (obj != null && obj instanceof Node) {
-                        return (Node) obj;
-                    } else {
-                        throw new ConfigException("No Such Node by id[" + key + "]");
-                    }
-                } catch (Exception e) {
-                    logger.error("call_manager_error", event.toString(), e);
+        nodeCache = new RefreshMemoryMirror<Long, Node>(timeout, (key, oldValue) -> {
+            FindNodeEvent event = new FindNodeEvent();
+            event.setNid(key);
+            try {
+                Object obj = nodeCommmunicationClient.callManager(event);
+                if (obj instanceof Node) {
+                    return (Node) obj;
+                } else {
+                    throw new ConfigException("No Such Node by id[" + key + "]");
                 }
-                // 其他情况直接返回内存中的旧值
-                return oldValue;
+            } catch (Exception e) {
+                logger.error("call_manager_error{}", event, e);
             }
+            // 其他情况直接返回内存中的旧值
+            return oldValue;
         });
 
-        channelCache = new RefreshMemoryMirror<Long, Channel>(timeout, new ComputeFunction<Long, Channel>() {
-
-            @Override
-            public Channel apply(Long key, Channel oldValue) {
-                FindChannelEvent event = new FindChannelEvent();
-                event.setChannelId(key);
-                try {
-                    Object obj = nodeCommmunicationClient.callManager(event);
-                    if (obj != null && obj instanceof Channel) {
-                        updateMapping((Channel) obj, null);// 排除下自己
-                        return (Channel) obj;
-                    } else {
-                        throw new ConfigException("No Such Channel by pipelineId[" + key + "]");
-                    }
-                } catch (Exception e) {
-                    logger.error("call_manager_error", event.toString(), e);
+        channelCache = new RefreshMemoryMirror<>(timeout, (key, oldValue) -> {
+            FindChannelEvent event = new FindChannelEvent();
+            event.setChannelId(key);
+            try {
+                Object obj = nodeCommmunicationClient.callManager(event);
+                if (obj instanceof Channel) {
+                    updateMapping((Channel) obj, null);// 排除下自己
+                    return (Channel) obj;
+                } else {
+                    throw new ConfigException("No Such Channel by pipelineId[" + key + "]");
                 }
-                // 其他情况直接返回内存中的旧值
-                return oldValue;
+            } catch (Exception e) {
+                logger.error("call_manager_error", event.toString(), e);
             }
+            // 其他情况直接返回内存中的旧值
+            return oldValue;
         });
     }
 

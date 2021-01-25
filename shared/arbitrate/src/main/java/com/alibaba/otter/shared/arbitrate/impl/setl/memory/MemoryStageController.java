@@ -16,16 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.memory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.ReplyProcessQueue;
@@ -34,9 +24,17 @@ import com.alibaba.otter.shared.arbitrate.model.EtlEventData;
 import com.alibaba.otter.shared.arbitrate.model.TerminEventData;
 import com.alibaba.otter.shared.arbitrate.model.TerminEventData.TerminType;
 import com.alibaba.otter.shared.common.model.config.enums.StageType;
-import com.google.common.base.Function;
-import com.google.common.collect.MapMaker;
 import com.google.common.collect.OtterMigrateMap;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author jianghang 2012-9-27 下午10:12:35
@@ -44,28 +42,24 @@ import com.google.common.collect.OtterMigrateMap;
  */
 public class MemoryStageController extends ArbitrateLifeCycle {
 
-    private AtomicLong                        atomicMaxProcessId = new AtomicLong(0);
-    private Map<StageType, ReplyProcessQueue> replys;
-    private Map<Long, StageProgress>          progress;
-    private BlockingQueue<TerminEventData>    termins;
-    private StageProgress                     nullProgress       = new StageProgress();
+    private final AtomicLong atomicMaxProcessId = new AtomicLong(0);
+    private final Map<StageType, ReplyProcessQueue> replys;
+    private final Map<Long, StageProgress> progress = new ConcurrentHashMap<>();
+    private final BlockingQueue<TerminEventData> termins;
+    private final StageProgress nullProgress = new StageProgress();
 
-    public MemoryStageController(Long pipelineId){
+    public MemoryStageController(Long pipelineId) {
         super(pipelineId);
 
-        replys = OtterMigrateMap.makeComputingMap(new Function<StageType, ReplyProcessQueue>() {
-
-            public ReplyProcessQueue apply(StageType input) {
-                int size = ArbitrateConfigUtils.getParallelism(getPipelineId()) * 10;
-                if (size < 100) {
-                    size = 100;
-                }
-                return new ReplyProcessQueue(size);
+        replys = OtterMigrateMap.makeComputingMap(input -> {
+            int size = ArbitrateConfigUtils.getParallelism(getPipelineId()) * 10;
+            if (size < 100) {
+                size = 100;
             }
+            return new ReplyProcessQueue(size);
         });
 
-        progress = new MapMaker().makeMap();
-        termins = new LinkedBlockingQueue<TerminEventData>(20);
+        termins = new LinkedBlockingQueue<>(20);
     }
 
     public Long waitForProcess(StageType stage) throws InterruptedException {
@@ -74,7 +68,8 @@ public class MemoryStageController extends ArbitrateLifeCycle {
         }
 
         Long processId = replys.get(stage).take();
-        if (stage.isSelect()) {// select一旦分出processId，就需要在progress中记录一笔，用于判断谁是最小的一个processId
+        if (stage.isSelect()) {
+            // select一旦分出processId，就需要在progress中记录一笔，用于判断谁是最小的一个processId
             progress.put(processId, nullProgress);
         }
 
@@ -85,6 +80,7 @@ public class MemoryStageController extends ArbitrateLifeCycle {
         return progress.get(processId).getData();
     }
 
+    @Override
     public synchronized void destory() {
         replys.clear();
         progress.clear();
@@ -99,7 +95,7 @@ public class MemoryStageController extends ArbitrateLifeCycle {
      */
     public synchronized void termin(TerminType type) {
         // 构建termin信号
-        List<Long> processIds = new ArrayList<Long>(progress.keySet());
+        List<Long> processIds = new ArrayList<>(progress.keySet());
         Collections.sort(processIds);// 做一下排序
         for (Long processId : processIds) {
             EtlEventData eventData = progress.get(processId).getData();

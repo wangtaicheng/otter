@@ -16,18 +16,11 @@
 
 package com.alibaba.otter.shared.common.utils;
 
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.oro.text.regex.MalformedPatternException;
-import org.apache.oro.text.regex.Pattern;
-import org.apache.oro.text.regex.PatternCompiler;
-import org.apache.oro.text.regex.PatternMatcher;
-import org.apache.oro.text.regex.Perl5Compiler;
-import org.apache.oro.text.regex.Perl5Matcher;
-
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.oro.text.regex.*;
+
+import java.util.Map;
 
 /**
  * @author simon 2012-9-25 下午5:01:48
@@ -37,16 +30,16 @@ public class RegexUtils {
 
     private static Map<String, Pattern> patterns = null;
 
+    private RegexUtils() {
+    }
+    
     static {
-        patterns = OtterMigrateMap.makeSoftValueComputingMap(new Function<String, Pattern>() {
-
-            public Pattern apply(String pattern) {
-                try {
-                    PatternCompiler pc = new Perl5Compiler();
-                    return pc.compile(pattern, Perl5Compiler.CASE_INSENSITIVE_MASK | Perl5Compiler.READ_ONLY_MASK);
-                } catch (MalformedPatternException e) {
-                    throw new RuntimeException("Regex failed!", e);
-                }
+        patterns = OtterMigrateMap.makeSoftValueComputingMap(pattern -> {
+            try {
+                PatternCompiler pc = new Perl5Compiler();
+                return pc.compile(pattern, Perl5Compiler.CASE_INSENSITIVE_MASK | Perl5Compiler.READ_ONLY_MASK);
+            } catch (MalformedPatternException e) {
+                throw new RuntimeException("Regex failed!", e);
             }
         });
     }

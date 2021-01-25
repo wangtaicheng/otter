@@ -16,38 +16,45 @@
 
 package com.alibaba.otter.node.etl.load.loader.interceptor;
 
-import java.util.List;
-
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
+
+import java.util.List;
 
 /**
  * 提供接口的默认实现
- * 
+ *
  * @author jianghang 2011-11-9 下午06:28:14
  * @version 4.0.0
  */
 public class AbstractLoadInterceptor<L, D> implements LoadInterceptor<L, D> {
 
+    @Override
     public void prepare(L context) {
     }
 
+    @Override
     public boolean before(L context, D currentData) {
         return false;
     }
 
+    @Override
     public void transactionBegin(L context, List<D> currentDatas, DbDialect dialect) {
     }
 
+    @Override
     public void transactionEnd(L context, List<D> currentDatas, DbDialect dialect) {
     }
 
+    @Override
     public void after(L context, D currentData) {
 
     }
 
+    @Override
     public void commit(L context) {
     }
 
+    @Override
     public void error(L context) {
     }
 

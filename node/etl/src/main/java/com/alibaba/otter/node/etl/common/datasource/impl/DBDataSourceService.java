@@ -16,13 +16,12 @@
 
 package com.alibaba.otter.node.etl.common.datasource.impl;
 
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
-import javax.sql.DataSource;
-
+import com.alibaba.otter.common.push.datasource.DataSourceHanlder;
+import com.alibaba.otter.node.etl.common.datasource.DataSourceService;
+import com.alibaba.otter.shared.common.model.config.data.DataMediaSource;
+import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
+import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
+import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -31,43 +30,41 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import com.alibaba.otter.common.push.datasource.DataSourceHanlder;
-import com.alibaba.otter.node.etl.common.datasource.DataSourceService;
-import com.alibaba.otter.shared.common.model.config.data.DataMediaSource;
-import com.alibaba.otter.shared.common.model.config.data.DataMediaType;
-import com.alibaba.otter.shared.common.model.config.data.db.DbMediaSource;
-import com.google.common.base.Function;
-import com.google.common.collect.OtterMigrateMap;
+import javax.sql.DataSource;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Comment of DataSourceServiceImpl
- * 
+ *
  * @author xiaoqing.zhouxq
  * @author zebinxu, add {@link DataSourceHanlder}
  */
 public class DBDataSourceService implements DataSourceService, DisposableBean {
 
-    private static final Logger                       logger                        = LoggerFactory.getLogger(DBDataSourceService.class);
+    private static final Logger logger = LoggerFactory.getLogger(DBDataSourceService.class);
 
-    private List<DataSourceHanlder>                   dataSourceHandlers;
+    private List<DataSourceHanlder> dataSourceHandlers;
 
-    private int                                       maxWait                       = 60 * 1000;
+    private int maxWait = 60 * 1000;
 
-    private int                                       minIdle                       = 0;
+    private int minIdle = 0;
 
-    private int                                       initialSize                   = 0;
+    private int initialSize = 0;
 
-    private int                                       maxActive                     = 32;
+    private int maxActive = 32;
 
-    private int                                       maxIdle                       = 32;
+    private int maxIdle = 32;
 
-    private int                                       numTestsPerEvictionRun        = -1;
+    private int numTestsPerEvictionRun = -1;
 
-    private int                                       timeBetweenEvictionRunsMillis = 60 * 1000;
+    private int timeBetweenEvictionRunsMillis = 60 * 1000;
 
-    private int                                       removeAbandonedTimeout        = 5 * 60;
+    private int removeAbandonedTimeout = 5 * 60;
 
-    private int                                       minEvictableIdleTimeMillis    = 5 * 60 * 1000;
+    private int minEvictableIdleTimeMillis = 5 * 60 * 1000;
 
     /**
      * 一个pipeline下面有一组DataSource.<br>
@@ -76,41 +73,36 @@ public class DBDataSourceService implements DataSourceService, DisposableBean {
      */
     private Map<Long, Map<DbMediaSource, DataSource>> dataSources;
 
-    public DBDataSourceService(){
+    public DBDataSourceService() {
         // 构建第一层map
-        dataSources = OtterMigrateMap.makeComputingMap(new Function<Long, Map<DbMediaSource, DataSource>>() {
+        dataSources = OtterMigrateMap.makeComputingMap(pipelineId -> {
+            // 构建第二层map
+            return OtterMigrateMap.makeComputingMap(dbMediaSource -> {
 
-            public Map<DbMediaSource, DataSource> apply(final Long pipelineId) {
-                // 构建第二层map
-                return OtterMigrateMap.makeComputingMap(new Function<DbMediaSource, DataSource>() {
+                // 扩展功能,可以自定义一些自己实现的 dataSource
+                DataSource customDataSource = preCreate(pipelineId, dbMediaSource);
+                if (customDataSource != null) {
+                    return customDataSource;
+                }
 
-                    public DataSource apply(DbMediaSource dbMediaSource) {
-
-                        // 扩展功能,可以自定义一些自己实现的 dataSource
-                        DataSource customDataSource = preCreate(pipelineId, dbMediaSource);
-                        if (customDataSource != null) {
-                            return customDataSource;
-                        }
-
-                        return createDataSource(dbMediaSource.getUrl(),
-                            dbMediaSource.getUsername(),
-                            dbMediaSource.getPassword(),
-                            dbMediaSource.getDriver(),
-                            dbMediaSource.getType(),
-                            dbMediaSource.getEncode());
-                    }
-
-                });
-            }
+                return createDataSource(dbMediaSource.getUrl(),
+                        dbMediaSource.getUsername(),
+                        dbMediaSource.getPassword(),
+                        dbMediaSource.getDriver(),
+                        dbMediaSource.getType(),
+                        dbMediaSource.getEncode());
+            });
         });
 
     }
 
+    @Override
     public DataSource getDataSource(long pipelineId, DataMediaSource dataMediaSource) {
         Assert.notNull(dataMediaSource);
         return dataSources.get(pipelineId).get(dataMediaSource);
     }
 
+    @Override
     public void destroy(Long pipelineId) {
         Map<DbMediaSource, DataSource> sources = dataSources.remove(pipelineId);
         if (sources != null) {
@@ -151,6 +143,7 @@ public class DBDataSourceService implements DataSourceService, DisposableBean {
 
     }
 
+    @Override
     public void destroy() throws Exception {
         for (Long pipelineId : dataSources.keySet()) {
             destroy(pipelineId);

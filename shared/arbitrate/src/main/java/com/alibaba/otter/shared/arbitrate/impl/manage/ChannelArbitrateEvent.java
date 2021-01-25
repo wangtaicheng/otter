@@ -16,24 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.manage;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.I0Itec.zkclient.exception.ZkNodeExistsException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang.math.RandomUtils;
-import org.apache.zookeeper.CreateMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.shared.arbitrate.ArbitrateViewService;
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateEvent;
@@ -52,21 +34,38 @@ import com.alibaba.otter.shared.common.model.config.pipeline.Pipeline;
 import com.alibaba.otter.shared.common.model.statistics.stage.ProcessStat;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.I0Itec.zkclient.exception.ZkNodeExistsException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.math.RandomUtils;
+import org.apache.zookeeper.CreateMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * 针对channel管理的相关信号操作
- * 
+ *
  * @author jianghang 2011-8-31 下午07:39:26
  */
 public class ChannelArbitrateEvent implements ArbitrateEvent {
 
-    protected static final Logger logger    = LoggerFactory.getLogger(ChannelArbitrateEvent.class);
-    private ZkClientx             zookeeper = ZooKeeperClient.getInstance();
-    private ArbitrateViewService  arbitrateViewService;
-    private NodeArbitrateEvent    nodeEvent;
-    private ErrorTerminProcess    errorTerminProcess;
-    private WarningTerminProcess  warningTerminProcess;
-    private ExecutorService       arbitrateExecutor;
+    protected static final Logger logger = LoggerFactory.getLogger(ChannelArbitrateEvent.class);
+    private final ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    private ArbitrateViewService arbitrateViewService;
+    private NodeArbitrateEvent nodeEvent;
+    private ErrorTerminProcess errorTerminProcess;
+    private WarningTerminProcess warningTerminProcess;
+    private ExecutorService arbitrateExecutor;
 
     /**
      * 初始化对应的channel节点,同步调用
@@ -184,6 +183,7 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
             // 异步启动
             arbitrateExecutor.submit(new Runnable() {
 
+                @Override
                 public void run() {
                     // sleep一段时间，保证rollback信息有足够的时间能被处理完成
                     try {
@@ -253,6 +253,7 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
         for (final Pipeline pipeline : pipelines) {
             futures.add(arbitrateExecutor.submit(new Callable<Boolean>() {
 
+                @Override
                 public Boolean call() {
                     TerminEventData data = new TerminEventData();
                     data.setPipelineId(pipeline.getId());
@@ -310,8 +311,8 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
             // 判断select
             List<Long> nids = getNids(pipeline.getSelectNodes());
             if (!CollectionUtils.containsAny(liveNodes, nids)) {
-                logger.error("current live nodes:{} , but select nids:{} , result:{}", new Object[] { liveNodes, nids,
-                        CollectionUtils.containsAny(liveNodes, nids) });
+                logger.error("current live nodes:{} , but select nids:{} , result:{}", new Object[]{liveNodes, nids,
+                        CollectionUtils.containsAny(liveNodes, nids)});
                 sendWarningMessage(pipeline.getId(), "can't restart by no select live node");
                 return false;
             }
@@ -319,8 +320,8 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
             // 判断extract
             nids = getNids(pipeline.getExtractNodes());
             if (!CollectionUtils.containsAny(liveNodes, nids)) {
-                logger.error("current live nodes:{} , but extract nids:{} , result:{}", new Object[] { liveNodes, nids,
-                        CollectionUtils.containsAny(liveNodes, nids) });
+                logger.error("current live nodes:{} , but extract nids:{} , result:{}", new Object[]{liveNodes, nids,
+                        CollectionUtils.containsAny(liveNodes, nids)});
                 sendWarningMessage(pipeline.getId(), "can't restart by no extract live node");
                 return false;
             }
@@ -328,8 +329,8 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
             // 判断transform/load
             nids = getNids(pipeline.getLoadNodes());
             if (!CollectionUtils.containsAny(liveNodes, nids)) {
-                logger.error("current live nodes:{} , but transform nids:{} , result:{}", new Object[] { liveNodes,
-                        nids, CollectionUtils.containsAny(liveNodes, nids) });
+                logger.error("current live nodes:{} , but transform nids:{} , result:{}", new Object[]{liveNodes,
+                        nids, CollectionUtils.containsAny(liveNodes, nids)});
                 sendWarningMessage(pipeline.getId(), "can't restart by no transform live node");
                 return false;
             }
@@ -342,7 +343,7 @@ public class ChannelArbitrateEvent implements ArbitrateEvent {
                     processIds.add(stat.getProcessId());
                 }
                 sendWarningMessage(pipeline.getId(),
-                                   "can't restart by exist process[" + StringUtils.join(processIds, ',') + "]");
+                        "can't restart by exist process[" + StringUtils.join(processIds, ',') + "]");
                 return false;
             }
         }

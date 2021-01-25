@@ -16,26 +16,6 @@
 
 package com.alibaba.otter.node.etl.load.loader.db;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
-
 import com.alibaba.otter.node.common.config.ConfigClientService;
 import com.alibaba.otter.node.etl.OtterConstants;
 import com.alibaba.otter.node.etl.load.exception.LoadException;
@@ -53,34 +33,47 @@ import com.alibaba.otter.shared.common.utils.thread.NamedThreadFactory;
 import com.alibaba.otter.shared.etl.model.FileBatch;
 import com.alibaba.otter.shared.etl.model.FileData;
 import com.alibaba.otter.shared.etl.model.Identity;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 /**
  * 处理文件load
- * 
+ *
  * @author jianghang 2011-10-31 上午11:33:22
  * @author zebinxu 2012-4-28 下午3:39:17 将每个权重的 file load 做成多线程
  * @version 4.0.0
  */
 public class FileLoadAction implements InitializingBean, DisposableBean {
 
-    private static final Logger logger             = LoggerFactory.getLogger(FileLoadAction.class);
-    private int                 retry              = 5;
+    private static final Logger logger = LoggerFactory.getLogger(FileLoadAction.class);
+    private int retry = 5;
     private ConfigClientService configClientService;
-    private LoadStatsTracker    loadStatsTracker;
-    private boolean             dump               = true;
+    private LoadStatsTracker loadStatsTracker;
+    private boolean dump = true;
 
     // for concurrent file load
-    private static final String WORKER_NAME        = "FileLoadAction";
+    private static final String WORKER_NAME = "FileLoadAction";
     private static final String WORKER_NAME_FORMAT = "pipelineId = %s , pipelineName = %s , " + WORKER_NAME;
-    private static final int    DEFAULT_POOL_SIZE  = 5;
-    private int                 poolSize           = DEFAULT_POOL_SIZE;
-    private ExecutorService     executor;
+    private static final int DEFAULT_POOL_SIZE = 5;
+    private int poolSize = DEFAULT_POOL_SIZE;
+    private ExecutorService executor;
 
     /**
      * 返回结果为已处理成功的记录
      */
     public FileLoadContext load(FileBatch fileBatch, File rootDir, WeightController controller) {
-        if (false == rootDir.exists()) {
+        if (!rootDir.exists()) {
             throw new LoadException(rootDir.getPath() + " is not exist");
         }
         FileLoadContext context = buildContext(fileBatch.getIdentity());
@@ -284,19 +277,20 @@ public class FileLoadAction implements InitializingBean, DisposableBean {
     private class FileLoadWorker implements Callable<Exception> {
 
         private FileLoadContext context;
-        private File            rootDir;
-        private FileData        fileData;
+        private File rootDir;
+        private FileData fileData;
 
-        public FileLoadWorker(FileLoadContext context, File rootDir, FileData fileData){
+        public FileLoadWorker(FileLoadContext context, File rootDir, FileData fileData) {
             this.context = context;
             this.rootDir = rootDir;
             this.fileData = fileData;
 
         }
 
+        @Override
         public Exception call() throws Exception {
             Thread.currentThread().setName(String.format(WORKER_NAME_FORMAT, context.getPipeline().getId(),
-                                                         context.getPipeline().getName()));
+                    context.getPipeline().getName()));
             try {
                 MDC.put(OtterConstants.splitPipelineLogFileKey, String.valueOf(context.getPipeline().getId()));
                 if (fileData == null) {
@@ -318,7 +312,7 @@ public class FileLoadAction implements InitializingBean, DisposableBean {
                 }
 
                 throw new LoadException(String.format("FileLoadWorker is error! createFile failed[%s]",
-                                                      fileData.getPath()), exception);
+                        fileData.getPath()), exception);
             } finally {
                 MDC.remove(OtterConstants.splitPipelineLogFileKey);
             }
@@ -348,7 +342,7 @@ public class FileLoadAction implements InitializingBean, DisposableBean {
                     context.getProcessedDatas().add(fileData);
                 } else {
                     throw new LoadException(String.format("copy/rename [%s] to [%s] failed by unknow reason",
-                                                          sourceFile.getPath(), targetFile.getPath()));
+                            sourceFile.getPath(), targetFile.getPath()));
                 }
 
             }
@@ -374,13 +368,15 @@ public class FileLoadAction implements InitializingBean, DisposableBean {
 
     }
 
+    @Override
     public void afterPropertiesSet() throws Exception {
         executor = new ThreadPoolExecutor(poolSize, poolSize, 0L, TimeUnit.MILLISECONDS,
-                                          new ArrayBlockingQueue<Runnable>(poolSize * 4),
-                                          new NamedThreadFactory(WORKER_NAME),
-                                          new ThreadPoolExecutor.CallerRunsPolicy());
+                new ArrayBlockingQueue<Runnable>(poolSize * 4),
+                new NamedThreadFactory(WORKER_NAME),
+                new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
+    @Override
     public void destroy() throws Exception {
         executor.shutdownNow();
     }

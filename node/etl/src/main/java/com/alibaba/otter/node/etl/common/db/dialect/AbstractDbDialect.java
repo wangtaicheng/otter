@@ -19,7 +19,6 @@ package com.alibaba.otter.node.etl.common.db.dialect;
 import com.alibaba.otter.node.etl.common.datasource.DataSourceService;
 import com.alibaba.otter.shared.common.utils.meta.DdlUtils;
 import com.alibaba.otter.shared.common.utils.meta.DdlUtilsFilter;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.NestableRuntimeException;
@@ -48,16 +47,16 @@ import java.util.Map;
  */
 public abstract class AbstractDbDialect implements DbDialect {
 
-    protected static final Logger                   logger = LoggerFactory.getLogger(AbstractDbDialect.class);
-    protected              int                      databaseMajorVersion;
-    protected              int                      databaseMinorVersion;
-    protected              String                   databaseName;
-    protected              DataSourceService        dataSourceService;
-    protected              SqlTemplate              sqlTemplate;
-    protected              JdbcTemplate             jdbcTemplate;
-    protected              TransactionTemplate      transactionTemplate;
-    protected              LobHandler               lobHandler;
-    protected              Map<List<String>, Table> tables;
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractDbDialect.class);
+    protected int databaseMajorVersion;
+    protected int databaseMinorVersion;
+    protected String databaseName;
+    protected DataSourceService dataSourceService;
+    protected SqlTemplate sqlTemplate;
+    protected JdbcTemplate jdbcTemplate;
+    protected TransactionTemplate transactionTemplate;
+    protected LobHandler lobHandler;
+    protected Map<List<String>, Table> tables;
 
     public AbstractDbDialect(final JdbcTemplate jdbcTemplate, LobHandler lobHandler) {
         this.jdbcTemplate = jdbcTemplate;
@@ -70,7 +69,8 @@ public abstract class AbstractDbDialect implements DbDialect {
         // 初始化一些数据
         jdbcTemplate.execute(new ConnectionCallback() {
 
-            @Override public Object doInConnection(Connection c) throws SQLException, DataAccessException {
+            @Override
+            public Object doInConnection(Connection c) throws SQLException, DataAccessException {
                 DatabaseMetaData meta = c.getMetaData();
                 databaseName = meta.getDatabaseProductName();
                 databaseMajorVersion = meta.getDatabaseMajorVersion();
@@ -99,7 +99,8 @@ public abstract class AbstractDbDialect implements DbDialect {
         initTables(jdbcTemplate);
     }
 
-    @Override public Table findTable(String schema, String table, boolean useCache) {
+    @Override
+    public Table findTable(String schema, String table, boolean useCache) {
         List<String> key = Arrays.asList(schema, table);
         if (useCache == false) {
             tables.remove(key);
@@ -108,11 +109,13 @@ public abstract class AbstractDbDialect implements DbDialect {
         return tables.get(key);
     }
 
-    @Override public Table findTable(String schema, String table) {
+    @Override
+    public Table findTable(String schema, String table) {
         return findTable(schema, table, true);
     }
 
-    @Override public void reloadTable(String schema, String table) {
+    @Override
+    public void reloadTable(String schema, String table) {
         if (StringUtils.isNotEmpty(table)) {
             tables.remove(Arrays.asList(schema, table));
         } else {
@@ -121,71 +124,79 @@ public abstract class AbstractDbDialect implements DbDialect {
         }
     }
 
-    @Override public String getName() {
+    @Override
+    public String getName() {
         return databaseName;
     }
 
-    @Override public int getMajorVersion() {
+    @Override
+    public int getMajorVersion() {
         return databaseMajorVersion;
     }
 
-    @Override public int getMinorVersion() {
+    @Override
+    public int getMinorVersion() {
         return databaseMinorVersion;
     }
 
-    @Override public String getVersion() {
+    @Override
+    public String getVersion() {
         return databaseMajorVersion + "." + databaseMinorVersion;
     }
 
-    @Override public LobHandler getLobHandler() {
+    @Override
+    public LobHandler getLobHandler() {
         return lobHandler;
     }
 
-    @Override public JdbcTemplate getJdbcTemplate() {
+    @Override
+    public JdbcTemplate getJdbcTemplate() {
         return jdbcTemplate;
     }
 
-    @Override public TransactionTemplate getTransactionTemplate() {
+    @Override
+    public TransactionTemplate getTransactionTemplate() {
         return transactionTemplate;
     }
 
-    @Override public SqlTemplate getSqlTemplate() {
+    @Override
+    public SqlTemplate getSqlTemplate() {
         return sqlTemplate;
     }
 
-    @Override public boolean isDRDS() {
+    @Override
+    public boolean isDRDS() {
         return false;
     }
 
-    @Override public String getShardColumns(String schema, String table) {
+    @Override
+    public String getShardColumns(String schema, String table) {
         return null;
     }
 
-    @Override public void destory() {
+    @Override
+    public void destory() {
     }
 
     // ================================ helper method ==========================
 
     private void initTables(final JdbcTemplate jdbcTemplate) {
-        this.tables = OtterMigrateMap.makeSoftValueComputingMap(new Function<List<String>, Table>() {
-
-            @Override public Table apply(List<String> names) {
-                Assert.isTrue(names.size() == 2);
-                try {
-                    beforeFindTable(jdbcTemplate, names.get(0), names.get(0), names.get(1));
-                    DdlUtilsFilter filter = getDdlUtilsFilter(jdbcTemplate, names.get(0), names.get(0), names.get(1));
-                    Table table = DdlUtils.findTable(jdbcTemplate, names.get(0), names.get(0), names.get(1), filter);
-                    afterFindTable(table, jdbcTemplate, names.get(0), names.get(0), names.get(1));
-                    if (table == null) {
-                        throw new NestableRuntimeException(
-                                "no found table [" + names.get(0) + "." + names.get(1) + "] , pls check");
-                    } else {
-                        return table;
-                    }
-                } catch (Exception e) {
-                    throw new NestableRuntimeException("find table [" + names.get(0) + "." + names.get(1) + "] error",
-                            e);
+        this.tables = OtterMigrateMap.makeSoftValueComputingMap(names -> {
+            Assert.isTrue(names.size() == 2);
+            try {
+                beforeFindTable(jdbcTemplate, names.get(0), names.get(0), names.get(1));
+                DdlUtilsFilter filter = getDdlUtilsFilter(jdbcTemplate, names.get(0), names.get(0), names.get(1));
+                Table table = DdlUtils.findTable(jdbcTemplate, names.get(0), names.get(0), names.get(1), filter);
+                afterFindTable(table, jdbcTemplate, names.get(0), names.get(0), names.get(1));
+                if (table == null) {
+                    throw new NestableRuntimeException(
+                            "no found table [" + names.get(0) + "." + names.get(1) + "] , pls check");
+                } else {
+                    return table;
                 }
+            } catch (Exception e) {
+                throw new NestableRuntimeException("find table [" + names.get(0) + "." + names.get(1) + "] error",
+                        e);
             }
         });
     }

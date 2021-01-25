@@ -18,7 +18,6 @@ package com.alibaba.otter.node.etl.common.db.dialect.mysql;
 
 import com.alibaba.otter.node.etl.common.db.dialect.AbstractDbDialect;
 import com.alibaba.otter.shared.common.utils.meta.DdlUtils;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.NestableRuntimeException;
@@ -38,7 +37,7 @@ import java.util.Map;
  */
 public class MysqlDialect extends AbstractDbDialect {
 
-    private boolean                   isDRDS = false;
+    private boolean isDRDS = false;
     private Map<List<String>, String> shardColumns;
 
     public MysqlDialect(JdbcTemplate jdbcTemplate, LobHandler lobHandler) {
@@ -58,50 +57,54 @@ public class MysqlDialect extends AbstractDbDialect {
     }
 
     private void initShardColumns() {
-        this.shardColumns = OtterMigrateMap.makeSoftValueComputingMap(new Function<List<String>, String>() {
-
-            @Override public String apply(List<String> names) {
-                Assert.isTrue(names.size() == 2);
-                try {
-                    String result = DdlUtils.getShardKeyByDRDS(jdbcTemplate, names.get(0), names.get(0), names.get(1));
-                    if (StringUtils.isEmpty(result)) {
-                        return "";
-                    } else {
-                        return result;
-                    }
-                } catch (Exception e) {
-                    throw new NestableRuntimeException("find table [" + names.get(0) + "." + names.get(1) + "] error",
-                            e);
+        this.shardColumns = OtterMigrateMap.makeSoftValueComputingMap(names -> {
+            Assert.isTrue(names.size() == 2);
+            try {
+                String result = DdlUtils.getShardKeyByDRDS(jdbcTemplate, names.get(0), names.get(0), names.get(1));
+                if (StringUtils.isEmpty(result)) {
+                    return "";
+                } else {
+                    return result;
                 }
+            } catch (Exception e) {
+                throw new NestableRuntimeException("find table [" + names.get(0) + "." + names.get(1) + "] error",
+                        e);
             }
         });
     }
 
-    @Override public boolean isCharSpacePadded() {
+    @Override
+    public boolean isCharSpacePadded() {
         return false;
     }
 
-    @Override public boolean isCharSpaceTrimmed() {
+    @Override
+    public boolean isCharSpaceTrimmed() {
         return true;
     }
 
-    @Override public boolean isEmptyStringNulled() {
+    @Override
+    public boolean isEmptyStringNulled() {
         return false;
     }
 
-    @Override public boolean isSupportMergeSql() {
+    @Override
+    public boolean isSupportMergeSql() {
         return true;
     }
 
-    @Override public String getDefaultSchema() {
+    @Override
+    public String getDefaultSchema() {
         return null;
     }
 
-    @Override public boolean isDRDS() {
+    @Override
+    public boolean isDRDS() {
         return isDRDS;
     }
 
-    @Override public String getShardColumns(String schema, String table) {
+    @Override
+    public String getShardColumns(String schema, String table) {
         if (isDRDS()) {
             return shardColumns.get(Arrays.asList(schema, table));
         } else {
@@ -109,7 +112,8 @@ public class MysqlDialect extends AbstractDbDialect {
         }
     }
 
-    @Override public String getDefaultCatalog() {
+    @Override
+    public String getDefaultCatalog() {
         return (String) jdbcTemplate.queryForObject("select database()", String.class);
     }
 

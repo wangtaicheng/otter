@@ -16,170 +16,186 @@
 
 package com.alibaba.otter.manager.biz.remote.impl;
 
-import java.text.MessageFormat;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import com.alibaba.otter.manager.biz.common.exceptions.ManagerException;
+import com.alibaba.otter.manager.biz.config.node.NodeService;
+import com.alibaba.otter.manager.biz.remote.NodeRemoteService;
+import com.alibaba.otter.shared.common.model.config.node.Node;
+import com.google.common.collect.OtterMigrateMap;
 
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-
-import com.alibaba.otter.manager.biz.common.exceptions.ManagerException;
-import com.alibaba.otter.manager.biz.config.node.NodeService;
-import com.alibaba.otter.manager.biz.remote.NodeRemoteService;
-import com.alibaba.otter.shared.common.model.config.node.Node;
-import com.google.common.base.Function;
-import com.google.common.collect.OtterMigrateMap;
+import java.text.MessageFormat;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 基于node Mbean获取数据的实现
- * 
+ *
  * @author jianghang 2012-7-30 上午10:38:30
  */
 public class NodeMBeanServiceImpl implements NodeRemoteService {
 
-    private static final String              MBEAN_NAME  = "bean:name=otterControllor";
-    private static final String              SERVICE_URL = "service:jmx:rmi://{0}/jndi/rmi://{0}:{1}/mbean";
-    private ObjectName                       objectName;
-    private NodeService                      nodeService;
+    private static final String MBEAN_NAME = "bean:name=otterControllor";
+    private static final String SERVICE_URL = "service:jmx:rmi://{0}/jndi/rmi://{0}:{1}/mbean";
+    private ObjectName objectName;
+    private NodeService nodeService;
     private Map<Long, MBeanServerConnection> mbeanServers;
 
-    public NodeMBeanServiceImpl(){
+    public NodeMBeanServiceImpl() {
         try {
             objectName = new ObjectName(MBEAN_NAME);
         } catch (Exception e) {
             throw new ManagerException(e);
         }
 
-        mbeanServers = OtterMigrateMap.makeSoftValueComputingMapWithTimeout(new Function<Long, MBeanServerConnection>() {
+        mbeanServers = OtterMigrateMap
+                .makeSoftValueComputingMapWithTimeout(nid -> {
+                    Node node = nodeService.findById(nid);
+                    String ip = node.getIp();
+                    if (node.getParameters().getUseExternalIp()) {
+                        ip = node.getParameters().getExternalIp();
+                    }
 
-            public MBeanServerConnection apply(Long nid) {
-                Node node = nodeService.findById(nid);
-                String ip = node.getIp();
-                if (node.getParameters().getUseExternalIp()) {
-                    ip = node.getParameters().getExternalIp();
-                }
+                    int port = node.getPort().intValue() + 1;
+                    Integer mbeanPort = node.getParameters().getMbeanPort();
+                    if (mbeanPort != null && mbeanPort != 0) {// 做个兼容处理，<=4.2.2版本没有mbeanPort设置
+                        port = mbeanPort;
+                    }
 
-                int port = node.getPort().intValue() + 1;
-                Integer mbeanPort = node.getParameters().getMbeanPort();
-                if (mbeanPort != null && mbeanPort != 0) {// 做个兼容处理，<=4.2.2版本没有mbeanPort设置
-                    port = mbeanPort;
-                }
-
-                try {
-                    JMXServiceURL serviceURL = new JMXServiceURL(MessageFormat.format(SERVICE_URL,
-                        ip,
-                        String.valueOf(port)));
-                    JMXConnector cntor = JMXConnectorFactory.connect(serviceURL, null);
-                    MBeanServerConnection mbsc = cntor.getMBeanServerConnection();
-                    return mbsc;
-                } catch (Exception e) {
-                    throw new ManagerException(e);
-                }
-            }
-
-        },5, TimeUnit.MINUTES);
+                    try {
+                        JMXServiceURL serviceURL = new JMXServiceURL(MessageFormat.format(SERVICE_URL,
+                                ip,
+                                String.valueOf(port)));
+                        JMXConnector cntor = JMXConnectorFactory.connect(serviceURL, null);
+                        MBeanServerConnection mbsc = cntor.getMBeanServerConnection();
+                        return mbsc;
+                    } catch (Exception e) {
+                        throw new ManagerException(e);
+                    }
+                }, 5, TimeUnit.MINUTES);
     }
 
+    @Override
     public String getHeapMemoryUsage(Long nid) {
         return (String) getAttribute(nid, "HeapMemoryUsage");
     }
 
+    @Override
     public String getNodeSystemInfo(Long nid) {
         return (String) getAttribute(nid, "NodeSystemInfo");
     }
 
+    @Override
     public String getNodeVersionInfo(Long nid) {
         return (String) getAttribute(nid, "NodeVersionInfo");
     }
 
+    @Override
     public int getRunningPipelineCount(Long nid) {
         return (Integer) getAttribute(nid, "RunningPipelineCount");
     }
 
+    @Override
     public List<Long> getRunningPipelines(Long nid) {
         return (List<Long>) getAttribute(nid, "RunningPipelines");
     }
 
+    @Override
     public int getThreadPoolSize(Long nid) {
         return (Integer) getAttribute(nid, "ThreadPoolSize");
     }
 
+    @Override
     public void setProfile(Long nid, boolean profile) {
         try {
             mbeanServers.get(nid).invoke(objectName,
-                "setProfile",
-                new Object[] { profile },
-                new String[] { "java.lang.Boolean" });
+                    "setProfile",
+                    new Object[]{profile},
+                    new String[]{"java.lang.Boolean"});
         } catch (Exception e) {
             mbeanServers.remove(nid);
             throw new ManagerException(e);
         }
     }
 
+    @Override
     public void setThreadPoolSize(Long nid, int size) {
         try {
             mbeanServers.get(nid).invoke(objectName,
-                "setThreadPoolSize",
-                new Object[] { size },
-                new String[] { "java.lang.Integer" });
+                    "setThreadPoolSize",
+                    new Object[]{size},
+                    new String[]{"java.lang.Integer"});
         } catch (Exception e) {
             mbeanServers.remove(nid);
             throw new ManagerException(e);
         }
     }
 
+    @Override
     public int getThreadActiveSize(Long nid) {
         return (Integer) getAttribute(nid, "ThreadActiveSize");
     }
 
+    @Override
     public boolean isSelectRunning(Long nid, Long pipelineId) {
         return (Boolean) invoke(nid, pipelineId, "isSelectRunning");
     }
 
+    @Override
     public boolean isExtractRunning(Long nid, Long pipelineId) {
         return (Boolean) invoke(nid, pipelineId, "isExtractRunning");
     }
 
+    @Override
     public boolean isTransformRunning(Long nid, Long pipelineId) {
         return (Boolean) invoke(nid, pipelineId, "isTransformRunning");
     }
 
+    @Override
     public boolean isLoadRunning(Long nid, Long pipelineId) {
         return (Boolean) invoke(nid, pipelineId, "isLoadRunning");
     }
 
+    @Override
     public String selectStageAggregation(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "selectStageAggregation");
     }
 
+    @Override
     public String extractStageAggregation(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "extractStageAggregation");
     }
 
+    @Override
     public String transformStageAggregation(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "transformStageAggregation");
     }
 
+    @Override
     public String loadStageAggregation(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "loadStageAggregation");
     }
 
+    @Override
     public String selectPendingProcess(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "selectPendingProcess");
     }
 
+    @Override
     public String extractPendingProcess(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "extractPendingProcess");
     }
 
+    @Override
     public String transformPendingProcess(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "transformPendingProcess");
     }
 
+    @Override
     public String loadPendingProcess(Long nid, Long pipelineId) {
         return (String) invoke(nid, pipelineId, "loadPendingProcess");
     }
@@ -196,9 +212,9 @@ public class NodeMBeanServiceImpl implements NodeRemoteService {
     private Object invoke(Long nid, Long pipelineId, String method) {
         try {
             return mbeanServers.get(nid).invoke(objectName,
-                method,
-                new Object[] { pipelineId },
-                new String[] { "java.lang.Long" });
+                    method,
+                    new Object[]{pipelineId},
+                    new String[]{"java.lang.Long"});
         } catch (Exception e) {
             mbeanServers.remove(nid);
             throw new ManagerException(e);

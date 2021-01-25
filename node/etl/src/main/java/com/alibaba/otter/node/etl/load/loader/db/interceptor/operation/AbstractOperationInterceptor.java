@@ -16,6 +16,23 @@
 
 package com.alibaba.otter.node.etl.load.loader.db.interceptor.operation;
 
+import com.alibaba.otter.node.common.config.ConfigClientService;
+import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
+import com.alibaba.otter.node.etl.load.loader.db.context.DbLoadContext;
+import com.alibaba.otter.node.etl.load.loader.interceptor.AbstractLoadInterceptor;
+import com.alibaba.otter.shared.common.model.config.channel.Channel;
+import com.alibaba.otter.shared.etl.model.EventData;
+import com.alibaba.otter.shared.etl.model.Identity;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.MessageFormat;
@@ -25,93 +42,78 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import com.alibaba.otter.node.common.config.ConfigClientService;
-import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
-import com.alibaba.otter.node.etl.load.loader.db.context.DbLoadContext;
-import com.alibaba.otter.node.etl.load.loader.interceptor.AbstractLoadInterceptor;
-import com.alibaba.otter.shared.common.model.config.channel.Channel;
-import com.alibaba.otter.shared.etl.model.EventData;
-import com.alibaba.otter.shared.etl.model.Identity;
-
 /**
  * @author jianghang 2011-10-31 下午02:24:28
  * @version 4.0.0
  */
 public abstract class AbstractOperationInterceptor extends AbstractLoadInterceptor<DbLoadContext, EventData> {
 
-    protected final Logger         logger              = LoggerFactory.getLogger(getClass());
-    protected static final int     GLOBAL_THREAD_COUNT = 1000;
-    protected static final int     INNER_THREAD_COUNT  = 300;
-    protected static final String  checkDataSql        = "SELECT COUNT(*) FROM {0} WHERE id BETWEEN 0 AND {1}";
-    protected static final String  deleteDataSql       = "DELETE FROM {0}";
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+    protected static final int GLOBAL_THREAD_COUNT = 1000;
+    protected static final int INNER_THREAD_COUNT = 300;
+    protected static final String CHECK_DATA_SQL = "SELECT COUNT(*) FROM {0} WHERE id BETWEEN 0 AND {1}";
+    protected static final String DELETE_DATA_SQL = "DELETE FROM {0}";
 
-    protected String               updateSql;
-    protected String               updateInfoSql;
-    protected String               clearSql            = "UPDATE {0} SET {1} = 0 WHERE id = ? and {1} = ?";
-    protected String               clearInfoSql        = "UPDATE {0} SET {1} = 0 , {2} = null WHERE id = ? and {1} = ? and {2} = ?";
-    protected int                  innerIdCount        = INNER_THREAD_COUNT;
-    protected int                  globalIdCount       = GLOBAL_THREAD_COUNT;
-    protected ConfigClientService  configClientService;
-    protected Set<JdbcTemplate>    tableCheckStatus    = Collections.synchronizedSet(new HashSet<JdbcTemplate>());
-    protected AtomicInteger        THREAD_COUNTER      = new AtomicInteger(0);
-    protected ThreadLocal<Integer> threadLocal         = new ThreadLocal<Integer>();
+    protected String updateSql;
+    protected String updateInfoSql;
+    protected String clearSql = "UPDATE {0} SET {1} = 0 WHERE id = ? and {1} = ?";
+    protected String clearInfoSql = "UPDATE {0} SET {1} = 0 , {2} = null WHERE id = ? and {1} = ? and {2} = ?";
+    protected int innerIdCount = INNER_THREAD_COUNT;
+    protected int globalIdCount = GLOBAL_THREAD_COUNT;
+    protected ConfigClientService configClientService;
+    protected Set<JdbcTemplate> tableCheckStatus = Collections.synchronizedSet(new HashSet<JdbcTemplate>());
+    protected AtomicInteger THREAD_COUNTER = new AtomicInteger(0);
+    protected ThreadLocal<Integer> threadLocal = new ThreadLocal<>();
 
-    protected AbstractOperationInterceptor(String updateSql, String updateInfoSql){
+    protected AbstractOperationInterceptor(String updateSql, String updateInfoSql) {
         this.updateSql = updateSql;
         this.updateInfoSql = updateInfoSql;
     }
 
     private void init(final JdbcTemplate jdbcTemplate, final String markTableName, final String markTableColumn) {
-        int count = jdbcTemplate.queryForInt(MessageFormat.format(checkDataSql, markTableName, GLOBAL_THREAD_COUNT - 1));
+        int count = jdbcTemplate
+                .queryForInt(MessageFormat.format(CHECK_DATA_SQL, markTableName, GLOBAL_THREAD_COUNT - 1));
         if (count != GLOBAL_THREAD_COUNT) {
             if (logger.isInfoEnabled()) {
-                logger.info("Interceptor: init " + markTableName + "'s data.");
+                logger.info("Interceptor: init {}'s data.", markTableName);
             }
             TransactionTemplate transactionTemplate = new TransactionTemplate();
             transactionTemplate.setTransactionManager(new DataSourceTransactionManager(jdbcTemplate.getDataSource()));
-            transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);// 注意这里强制使用非事务，保证多线程的可见性
-            transactionTemplate.execute(new TransactionCallback() {
+            // 注意这里强制使用非事务，保证多线程的可见性
+            transactionTemplate
+                    .setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+            transactionTemplate.execute((TransactionCallback) status -> {
+                jdbcTemplate.execute(MessageFormat.format(DELETE_DATA_SQL, markTableName));
+                String batchSql = MessageFormat.format(updateSql, markTableName, markTableColumn);
+                jdbcTemplate.batchUpdate(batchSql, new BatchPreparedStatementSetter() {
 
-                public Object doInTransaction(TransactionStatus status) {
-                    jdbcTemplate.execute(MessageFormat.format(deleteDataSql, markTableName));
-                    String batchSql = MessageFormat.format(updateSql, new Object[] { markTableName, markTableColumn });
-                    jdbcTemplate.batchUpdate(batchSql, new BatchPreparedStatementSetter() {
+                    @Override
+                    public void setValues(PreparedStatement ps, int idx) throws SQLException {
+                        ps.setInt(1, idx);
+                        ps.setInt(2, 0);
+                        // ps.setNull(3, Types.VARCHAR);
+                    }
 
-                        public void setValues(PreparedStatement ps, int idx) throws SQLException {
-                            ps.setInt(1, idx);
-                            ps.setInt(2, 0);
-                            // ps.setNull(3, Types.VARCHAR);
-                        }
-
-                        public int getBatchSize() {
-                            return GLOBAL_THREAD_COUNT;
-                        }
-                    });
-                    return null;
-                }
+                    @Override
+                    public int getBatchSize() {
+                        return GLOBAL_THREAD_COUNT;
+                    }
+                });
+                return null;
             });
 
             if (logger.isInfoEnabled()) {
-                logger.info("Interceptor: Init EROSA Client Data: " + updateSql);
+                logger.info("Interceptor: Init EROSA Client Data: {}", updateSql);
             }
         }
 
     }
 
+    @Override
     public void transactionBegin(DbLoadContext context, List<EventData> currentDatas, DbDialect dialect) {
         boolean needInfo = StringUtils.isNotEmpty(context.getPipeline().getParameters().getChannelInfo());
-        if (context.getChannel().getPipelines().size() > 1 || needInfo) {// 如果是双向同步，需要记录clientId
+        // 如果是双向同步，需要记录clientId
+        if (context.getChannel().getPipelines().size() > 1 || needInfo) {
             String hint = currentDatas.get(0).getHint();
             String sql = needInfo ? updateInfoSql : updateSql;
             threadLocal.remove();// 进入之前先清理
@@ -121,9 +123,11 @@ public abstract class AbstractOperationInterceptor extends AbstractLoadIntercept
         }
     }
 
+    @Override
     public void transactionEnd(DbLoadContext context, List<EventData> currentDatas, DbDialect dialect) {
         boolean needInfo = StringUtils.isNotEmpty(context.getPipeline().getParameters().getChannelInfo());
-        if (context.getChannel().getPipelines().size() > 1 || needInfo) {// 如果是双向同步，需要记录clientId
+        // 如果是双向同步，需要记录clientId
+        if (context.getChannel().getPipelines().size() > 1 || needInfo) {
             String hint = currentDatas.get(0).getHint();
             String sql = needInfo ? clearInfoSql : clearSql;
             Integer threadId = threadLocal.get();
@@ -141,10 +145,10 @@ public abstract class AbstractOperationInterceptor extends AbstractLoadIntercept
         Channel channel = context.getChannel();
         // 获取dbDialect
         String markTableName = context.getPipeline().getParameters().getSystemSchema() + "."
-                               + context.getPipeline().getParameters().getSystemMarkTable();
+                + context.getPipeline().getParameters().getSystemMarkTable();
         String markTableColumn = context.getPipeline().getParameters().getSystemMarkTableColumn();
         synchronized (dialect.getJdbcTemplate()) {
-            if (tableCheckStatus.contains(dialect.getJdbcTemplate()) == false) {
+            if (!tableCheckStatus.contains(dialect.getJdbcTemplate())) {
                 init(dialect.getJdbcTemplate(), markTableName, markTableColumn);
                 tableCheckStatus.add(dialect.getJdbcTemplate());
             }
@@ -153,18 +157,19 @@ public abstract class AbstractOperationInterceptor extends AbstractLoadIntercept
         int affectedCount = 0;
         if (needInfo) {
             String infoColumn = context.getPipeline().getParameters().getSystemMarkTableInfo();
-            String info = context.getPipeline().getParameters().getChannelInfo();// 记录一下channelInfo
-            String esql = MessageFormat.format(sql, new Object[] { markTableName, markTableColumn, infoColumn });
+            // 记录一下channelInfo
+            String info = context.getPipeline().getParameters().getChannelInfo();
+            String esql = MessageFormat.format(sql, markTableName, markTableColumn, infoColumn);
             if (hint != null) {
                 esql = hint + esql;
             }
-            affectedCount = dialect.getJdbcTemplate().update(esql, new Object[] { threadId, channel.getId(), info });
+            affectedCount = dialect.getJdbcTemplate().update(esql, threadId, channel.getId(), info);
         } else {
-            String esql = MessageFormat.format(sql, new Object[] { markTableName, markTableColumn });
+            String esql = MessageFormat.format(sql, markTableName, markTableColumn);
             if (hint != null) {
                 esql = hint + esql;
             }
-            affectedCount = dialect.getJdbcTemplate().update(esql, new Object[] { threadId, channel.getId() });
+            affectedCount = dialect.getJdbcTemplate().update(esql, threadId, channel.getId());
         }
 
         if (affectedCount <= 0) {

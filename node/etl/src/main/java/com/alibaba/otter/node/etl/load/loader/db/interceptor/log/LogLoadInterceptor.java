@@ -43,13 +43,13 @@ public class LogLoadInterceptor extends AbstractLoadInterceptor<DbLoadContext, E
     private static final String SEP = SystemUtils.LINE_SEPARATOR;
     private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd HH:mm:ss:SSS";
     private int batchSize = 50;
-    private static String context_format = null;
+    private static String contextFormat;
     private boolean dump = true;
 
     static {
-        context_format = "* status : {0}  , time : {1} *" + SEP;
-        context_format += "* Identity : {2} *" + SEP;
-        context_format += "* total Data : [{3}] , success Data : [{4}] , failed Data : [{5}] , Interrupt : [{6}]" + SEP;
+        contextFormat = "* status : {0}  , time : {1} *" + SEP;
+        contextFormat += "* Identity : {2} *" + SEP;
+        contextFormat += "* total Data : [{3}] , success Data : [{4}] , failed Data : [{5}] , Interrupt : [{6}]" + SEP;
     }
 
     @Override
@@ -62,15 +62,15 @@ public class LogLoadInterceptor extends AbstractLoadInterceptor<DbLoadContext, E
                 try {
                     MDC.put(OtterConstants.splitPipelineLoadLogFileKey,
                             String.valueOf(context.getIdentity().getPipelineId()));
-                    logger.info(SEP + "****************************************************" + SEP);
+                    logger.info("{}****************************************************{}", SEP, SEP);
                     logger.info(dumpContextInfo("successed", context));
-                    logger.info("****************************************************" + SEP);
-                    logger.info("* process Data  *" + SEP);
+                    logger.info("****************************************************{}", SEP);
+                    logger.info("* process Data  *{}", SEP);
                     logEventDatas(context.getProcessedDatas());
-                    logger.info("-----------------" + SEP);
-                    logger.info("* failed Data *" + SEP);
+                    logger.info("-----------------{}", SEP);
+                    logger.info("* failed Data *{}", SEP);
                     logEventDatas(context.getFailedDatas());
-                    logger.info("****************************************************" + SEP);
+                    logger.info("****************************************************{}", SEP);
                 } finally {
                     MDC.remove(OtterConstants.splitPipelineLoadLogFileKey);
                 }
@@ -88,12 +88,12 @@ public class LogLoadInterceptor extends AbstractLoadInterceptor<DbLoadContext, E
                     MDC.put(OtterConstants.splitPipelineLoadLogFileKey,
                             String.valueOf(context.getIdentity().getPipelineId()));
                     logger.info(dumpContextInfo("error", context));
-                    logger.info("* process Data  *" + SEP);
+                    logger.info("* process Data  *{}", SEP);
                     logEventDatas(context.getProcessedDatas());
-                    logger.info("-----------------" + SEP);
-                    logger.info("* failed Data *" + SEP);
+                    logger.info("-----------------{}", SEP);
+                    logger.info("* failed Data *{}", SEP);
                     logEventDatas(context.getFailedDatas());
-                    logger.info("****************************************************" + SEP);
+                    logger.info("****************************************************{}", SEP);
                 } finally {
                     MDC.remove(OtterConstants.splitPipelineLoadLogFileKey);
                 }
@@ -125,7 +125,7 @@ public class LogLoadInterceptor extends AbstractLoadInterceptor<DbLoadContext, E
         boolean isInterrupt = (all != (failed + successed));
         Date now = new Date();
         SimpleDateFormat format = new SimpleDateFormat(TIMESTAMP_FORMAT);
-        return MessageFormat.format(context_format, status, format.format(now), context.getIdentity().toString(), all,
+        return MessageFormat.format(contextFormat, status, format.format(now), context.getIdentity().toString(), all,
                 successed, failed, isInterrupt);
     }
 

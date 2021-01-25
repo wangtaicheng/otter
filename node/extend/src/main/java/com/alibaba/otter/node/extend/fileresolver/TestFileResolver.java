@@ -16,14 +16,13 @@
 
 package com.alibaba.otter.node.extend.fileresolver;
 
-import java.util.Map;
-
+import com.alibaba.otter.shared.etl.extend.fileresolver.FileInfo;
 import org.apache.commons.lang.StringUtils;
 
-import com.alibaba.otter.shared.etl.extend.fileresolver.FileInfo;
+import java.util.Map;
 
 public class TestFileResolver extends AbstractFileResolver {
-
+    @Override
     public FileInfo[] getFileInfo(Map<String, String> rowMap) {
         // 基本步骤：
         // 1. 获取binlog中的变更字段，比如组成文件有多个字段组成version+path
@@ -33,7 +32,7 @@ public class TestFileResolver extends AbstractFileResolver {
         FileInfo fileInfo = null;
         if (StringUtils.isNotEmpty(path)) {
             fileInfo = new FileInfo(path);
-            return new FileInfo[] { fileInfo };
+            return new FileInfo[]{fileInfo};
         } else {
             return null;
         }

@@ -24,29 +24,33 @@ import com.alibaba.otter.shared.arbitrate.impl.manage.SystemArbitrateEvent;
 
 /**
  * manager的管理信号
- * 
+ *
  * @author jianghang 2011-9-26 下午07:03:35
  * @version 4.0.0
  */
 public class ArbitrateManageServiceImpl implements ArbitrateManageService {
 
-    private SystemArbitrateEvent   systemEvent;
-    private ChannelArbitrateEvent  channelEvent;
-    private NodeArbitrateEvent     nodeEvent;
+    private SystemArbitrateEvent systemEvent;
+    private ChannelArbitrateEvent channelEvent;
+    private NodeArbitrateEvent nodeEvent;
     private PipelineArbitrateEvent pipelineEvent;
 
+    @Override
     public SystemArbitrateEvent systemEvent() {
         return systemEvent;
     }
 
+    @Override
     public ChannelArbitrateEvent channelEvent() {
         return channelEvent;
     }
 
+    @Override
     public NodeArbitrateEvent nodeEvent() {
         return nodeEvent;
     }
 
+    @Override
     public PipelineArbitrateEvent pipelineEvent() {
         return pipelineEvent;
     }

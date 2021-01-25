@@ -17,7 +17,6 @@
 package com.alibaba.otter.manager.biz.utils;
 
 import com.alibaba.otter.manager.biz.common.exceptions.ManagerException;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
 import org.apache.commons.lang.StringUtils;
 import org.apache.oro.text.regex.*;
@@ -32,16 +31,16 @@ public class RegexUtils {
 
     private static Map<String, Pattern> patterns = null;
 
-    static {
-        patterns = OtterMigrateMap.makeSoftValueComputingMap(new Function<String, Pattern>() {
+    private RegexUtils() {
+    }
 
-            @Override public Pattern apply(String pattern) {
-                try {
-                    PatternCompiler pc = new Perl5Compiler();
-                    return pc.compile(pattern, Perl5Compiler.CASE_INSENSITIVE_MASK | Perl5Compiler.READ_ONLY_MASK);
-                } catch (MalformedPatternException e) {
-                    throw new ManagerException(e);
-                }
+    static {
+        patterns = OtterMigrateMap.makeSoftValueComputingMap(pattern -> {
+            try {
+                PatternCompiler pc = new Perl5Compiler();
+                return pc.compile(pattern, Perl5Compiler.CASE_INSENSITIVE_MASK | Perl5Compiler.READ_ONLY_MASK);
+            } catch (MalformedPatternException e) {
+                throw new ManagerException(e);
             }
         });
     }

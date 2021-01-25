@@ -16,17 +16,18 @@
 
 package com.alibaba.otter.node.etl.load.loader.interceptor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
 import com.alibaba.otter.node.etl.load.loader.LoadContext;
 import com.alibaba.otter.shared.etl.model.ObjectData;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, ObjectData> {
 
     private List<LoadInterceptor> interceptors = new ArrayList<LoadInterceptor>();
 
+    @Override
     public void prepare(LoadContext context) {
         if (interceptors == null) {
             return;
@@ -37,6 +38,7 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         }
     }
 
+    @Override
     public boolean before(LoadContext context, ObjectData currentData) {
         if (interceptors == null) {
             return false;
@@ -45,13 +47,15 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         boolean result = false;
         for (LoadInterceptor interceptor : interceptors) {
             result |= interceptor.before(context, currentData);
-            if (result) {// 出现一个true就退出
+            // 出现一个true就退出
+            if (result) {
                 return result;
             }
         }
         return result;
     }
 
+    @Override
     public void transactionBegin(LoadContext context, List<ObjectData> currentDatas, DbDialect dialect) {
         if (interceptors == null) {
             return;
@@ -62,6 +66,7 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         }
     }
 
+    @Override
     public void transactionEnd(LoadContext context, List<ObjectData> currentDatas, DbDialect dialect) {
         if (interceptors == null) {
             return;
@@ -72,6 +77,7 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         }
     }
 
+    @Override
     public void after(LoadContext context, ObjectData currentData) {
         if (interceptors == null) {
             return;
@@ -82,6 +88,7 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         }
     }
 
+    @Override
     public void commit(LoadContext context) {
         if (interceptors == null) {
             return;
@@ -92,6 +99,7 @@ public class ChainLoadInterceptor extends AbstractLoadInterceptor<LoadContext, O
         }
     }
 
+    @Override
     public void error(LoadContext context) {
         if (interceptors == null) {
             return;

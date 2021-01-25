@@ -71,21 +71,21 @@ import java.util.concurrent.*;
  */
 public class DbLoadAction implements InitializingBean, DisposableBean {
 
-    private static final Logger              logger             = LoggerFactory.getLogger(DbLoadAction.class);
-    private static final String              WORKER_NAME        = "DbLoadAction";
-    private static final String              WORKER_NAME_FORMAT =
+    private static final Logger logger = LoggerFactory.getLogger(DbLoadAction.class);
+    private static final String WORKER_NAME = "DbLoadAction";
+    private static final String WORKER_NAME_FORMAT =
             "pipelineId = %s , pipelineName = %s , " + WORKER_NAME;
-    private static final int                 DEFAULT_POOL_SIZE  = 5;
-    private              int                 poolSize           = DEFAULT_POOL_SIZE;
-    private              int                 retry              = 3;
-    private              int                 retryWait          = 3000;
-    private              LoadInterceptor     interceptor;
-    private              ExecutorService     executor;
-    private              DbDialectFactory    dbDialectFactory;
-    private              ConfigClientService configClientService;
-    private              int                 batchSize          = 50;
-    private              boolean             useBatch           = true;
-    private              LoadStatsTracker    loadStatsTracker;
+    private static final int DEFAULT_POOL_SIZE = 5;
+    private int poolSize = DEFAULT_POOL_SIZE;
+    private int retry = 3;
+    private int retryWait = 3000;
+    private LoadInterceptor interceptor;
+    private ExecutorService executor;
+    private DbDialectFactory dbDialectFactory;
+    private ConfigClientService configClientService;
+    private int batchSize = 50;
+    private boolean useBatch = true;
+    private LoadStatsTracker loadStatsTracker;
 
     /**
      * 返回结果为已处理成功的记录
@@ -215,7 +215,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
     private void doLoad(final DbLoadContext context, DbLoadData loadData) {
         // 优先处理delete,可以利用batch优化
-        List<List<EventData>> batchDatas = new ArrayList<List<EventData>>();
+        List<List<EventData>> batchDatas = new ArrayList<>();
         for (TableLoadData tableData : loadData.getTables()) {
             if (useBatch) {
                 // 优先执行delete语句，针对uniqe更新，一般会进行delete + insert的处理模式，避免并发更新
@@ -224,7 +224,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                 // 如果不可以执行batch，则按照单条数据进行并行提交
                 // 优先执行delete语句，针对uniqe更新，一般会进行delete + insert的处理模式，避免并发更新
                 for (EventData data : tableData.getDeleteDatas()) {
-                    batchDatas.add(Arrays.asList(data));
+                    batchDatas.add(Collections.singletonList(data));
                 }
             }
         }
@@ -245,10 +245,10 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
             } else {
                 // 执行insert + update语句
                 for (EventData data : tableData.getInsertDatas()) {
-                    batchDatas.add(Arrays.asList(data));
+                    batchDatas.add(Collections.singletonList(data));
                 }
                 for (EventData data : tableData.getUpadateDatas()) {
-                    batchDatas.add(Arrays.asList(data));
+                    batchDatas.add(Collections.singletonList(data));
                 }
             }
         }
@@ -265,8 +265,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
      * 将对应的数据按照sql相同进行batch组合
      */
     private List<List<EventData>> split(List<EventData> datas) {
-        List<List<EventData>> result = new ArrayList<List<EventData>>();
-        if (datas == null || datas.size() == 0) {
+        List<List<EventData>> result = new ArrayList<>();
+        if (datas == null || datas.isEmpty()) {
             return result;
         } else {
             int[] bits = new int[datas.size()];// 初始化一个标记，用于标明对应的记录是否已分入某个batch
@@ -301,12 +301,6 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
      * 判断两条记录是否可以作为一个batch提交，主要判断sql是否相等. 可优先通过schemaName进行判断
      */
     private boolean canBatch(EventData source, EventData target) {
-        // return StringUtils.equals(source.getSchemaName(),
-        // target.getSchemaName())
-        // && StringUtils.equals(source.getTableName(), target.getTableName())
-        // && StringUtils.equals(source.getSql(), target.getSql());
-        // return StringUtils.equals(source.getSql(), target.getSql());
-
         // 因为sqlTemplate构造sql时用了String.intern()的操作，保证相同字符串的引用是同一个，所以可以直接使用==进行判断，提升效率
         return source.getSql() == target.getSql();
     }
@@ -338,10 +332,11 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                     (DbMediaSource) dataMedia.getSource());
             Boolean skipDdlException = context.getPipeline().getParameters().getSkipDdlException();
             try {
-                Boolean result = dbDialect.getJdbcTemplate().execute(new StatementCallback<Boolean>() {
+                boolean result = dbDialect.getJdbcTemplate().execute(new StatementCallback<Boolean>() {
 
-                    @Override public Boolean doInStatement(Statement stmt) throws SQLException, DataAccessException {
-                        Boolean result = true;
+                    @Override
+                    public Boolean doInStatement(Statement stmt) throws SQLException, DataAccessException {
+                        boolean result = true;
                         if (dbDialect instanceof MysqlDialect && StringUtils.isNotEmpty(data.getDdlSchemaName())) {
                             // 如果mysql，执行ddl时，切换到在源库执行的schema上
                             // result &= stmt.execute("use " +
@@ -379,7 +374,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
      */
     private void doTwoPhase(DbLoadContext context, List<List<EventData>> totalRows, boolean canBatch) {
         // 预处理下数据
-        List<Future<Exception>> results = new ArrayList<Future<Exception>>();
+        List<Future<Exception>> results = new ArrayList<>();
         for (List<EventData> rows : totalRows) {
             if (CollectionUtils.isEmpty(rows)) {
                 continue; // 过滤空记录
@@ -407,14 +402,10 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
             }
         }
 
-        if (true == partFailed) {
-            // if (CollectionUtils.isEmpty(context.getFailedDatas())) {
-            // logger.error("##load phase one failed but failedDatas is empty!");
-            // return;
-            // }
+        if (partFailed) {
 
             // 尝试的内容换成phase one跑的所有数据，避免因failed datas计算错误而导致丢数据
-            List<EventData> retryEventDatas = new ArrayList<EventData>();
+            List<EventData> retryEventDatas = new ArrayList<>();
             for (List<EventData> rows : totalRows) {
                 retryEventDatas.addAll(rows);
             }
@@ -425,9 +416,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
             Boolean skipLoadException = context.getPipeline().getParameters().getSkipLoadException();
             if (skipLoadException != null && skipLoadException) {// 如果设置为允许跳过单条异常，则一条条执行数据load，准确过滤掉出错的记录，并进行日志记录
                 for (EventData retryEventData : retryEventDatas) {
-                    DbLoadWorker worker = new DbLoadWorker(context,
-                            Arrays.asList(retryEventData),
-                            false);// 强制设置batch为false
+                    DbLoadWorker worker = new DbLoadWorker(context, Collections
+                            .singletonList(retryEventData), false);// 强制设置batch为false
                     try {
                         Exception ex = worker.call();
                         if (ex != null) {
@@ -490,7 +480,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
         }
     }
 
-    @Override public void afterPropertiesSet() throws Exception {
+    @Override
+    public void afterPropertiesSet() throws Exception {
         executor = new ThreadPoolExecutor(poolSize,
                 poolSize,
                 0L,
@@ -500,7 +491,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                 new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
-    @Override public void destroy() throws Exception {
+    @Override
+    public void destroy() throws Exception {
         executor.shutdownNow();
     }
 
@@ -512,14 +504,14 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
     class DbLoadWorker implements Callable<Exception> {
 
-        private DbLoadContext   context;
-        private DbDialect       dbDialect;
+        private DbLoadContext context;
+        private DbDialect dbDialect;
         private List<EventData> datas;
-        private boolean         canBatch;
-        private List<EventData> allFailedDatas   = new ArrayList<EventData>();
+        private boolean canBatch;
+        private List<EventData> allFailedDatas = new ArrayList<EventData>();
         private List<EventData> allProcesedDatas = new ArrayList<EventData>();
-        private List<EventData> processedDatas   = new ArrayList<EventData>();
-        private List<EventData> failedDatas      = new ArrayList<EventData>();
+        private List<EventData> processedDatas = new ArrayList<EventData>();
+        private List<EventData> failedDatas = new ArrayList<EventData>();
 
         public DbLoadWorker(DbLoadContext context, List<EventData> datas, boolean canBatch) {
             this.context = context;
@@ -533,7 +525,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
         }
 
-        @Override public Exception call() throws Exception {
+        @Override
+        public Exception call() throws Exception {
             try {
                 Thread
                         .currentThread()
@@ -579,7 +572,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                             int[] affects = new int[splitDatas.size()];
                             affects = (int[]) dbDialect.getTransactionTemplate().execute(new TransactionCallback() {
 
-                                @Override public Object doInTransaction(TransactionStatus status) {
+                                @Override
+                                public Object doInTransaction(TransactionStatus status) {
                                     // 初始化一下内容
                                     try {
                                         failedDatas.clear(); // 先清理
@@ -588,12 +582,14 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                                         JdbcTemplate template = dbDialect.getJdbcTemplate();
                                         int[] affects = template.batchUpdate(sql, new BatchPreparedStatementSetter() {
 
-                                            @Override public void setValues(PreparedStatement ps, int idx)
+                                            @Override
+                                            public void setValues(PreparedStatement ps, int idx)
                                                     throws SQLException {
                                                 doPreparedStatement(ps, dbDialect, lobCreator, splitDatas.get(idx));
                                             }
 
-                                            @Override public int getBatchSize() {
+                                            @Override
+                                            public int getBatchSize() {
                                                 return splitDatas.size();
                                             }
                                         });
@@ -615,7 +611,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                             int affect = 0;
                             affect = (Integer) dbDialect.getTransactionTemplate().execute(new TransactionCallback() {
 
-                                @Override public Object doInTransaction(TransactionStatus status) {
+                                @Override
+                                public Object doInTransaction(TransactionStatus status) {
                                     try {
                                         failedDatas.clear(); // 先清理
                                         processedDatas.clear();
@@ -623,7 +620,8 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                                         JdbcTemplate template = dbDialect.getJdbcTemplate();
                                         int affect = template.update(data.getSql(), new PreparedStatementSetter() {
 
-                                            @Override public void setValues(PreparedStatement ps) throws SQLException {
+                                            @Override
+                                            public void setValues(PreparedStatement ps) throws SQLException {
                                                 doPreparedStatement(ps, dbDialect, lobCreator, data);
                                             }
                                         });
@@ -735,7 +733,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
             // 获取一下当前字段名的数据是否必填
             Table table = dbDialect.findTable(data.getSchemaName(), data.getTableName());
-            Map<String, Boolean> isRequiredMap = new HashMap<String, Boolean>();
+            Map<String, Boolean> isRequiredMap = new HashMap<>();
             for (Column tableColumn : table.getColumns()) {
                 isRequiredMap.put(StringUtils.lowerCase(tableColumn.getName()), tableColumn.isRequired());
             }
@@ -749,7 +747,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                 if (isRequired == null) {
                     // 清理一下目标库的表结构,二次检查一下
                     table = dbDialect.findTable(data.getSchemaName(), data.getTableName(), false);
-                    isRequiredMap = new HashMap<String, Boolean>();
+                    isRequiredMap = new HashMap<>();
                     for (Column tableColumn : table.getColumns()) {
                         isRequiredMap.put(StringUtils.lowerCase(tableColumn.getName()), tableColumn.isRequired());
                     }
@@ -764,7 +762,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
                 Object param = null;
                 if (dbDialect instanceof MysqlDialect && (sqlType == Types.TIME || sqlType == Types.TIMESTAMP
-                                                          || sqlType == Types.DATE)) {
+                        || sqlType == Types.DATE)) {
                     // 解决mysql的0000-00-00 00:00:00问题，直接依赖mysql
                     // driver进行处理，如果转化为Timestamp会出错
                     param = column.getColumnValue();
@@ -811,7 +809,7 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
                     }
                 } catch (SQLException ex) {
                     logger.error("## SetParam error , [pairId={}, sqltype={}, value={}]",
-                            new Object[] { data.getPairId(), sqlType, param });
+                            data.getPairId(), sqlType, param);
                     throw ex;
                 }
             }
@@ -861,16 +859,6 @@ public class DbLoadAction implements InitializingBean, DisposableBean {
 
     // 大致估算一下row记录的大小
     private long calculateSize(EventData data) {
-        // long size = 0L;
-        // size += data.getKeys().toString().getBytes().length - 12 -
-        // data.getKeys().size() + 1L;
-        // size += data.getColumns().toString().getBytes().length - 12 -
-        // data.getKeys().size() + 1L;
-        // return size;
-
-        // byte[] bytes = JsonUtils.marshalToByte(data);// 走序列化的方式快速计算一下大小
-        // return bytes.length;
-
         return data.getSize();// 数据不做计算，避免影响性能
     }
 

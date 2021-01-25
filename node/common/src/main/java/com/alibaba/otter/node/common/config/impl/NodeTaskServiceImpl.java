@@ -16,16 +16,6 @@
 
 package com.alibaba.otter.node.common.config.impl;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.node.common.communication.NodeCommmunicationClient;
 import com.alibaba.otter.node.common.config.NodeTaskListener;
 import com.alibaba.otter.node.common.config.NodeTaskService;
@@ -40,32 +30,42 @@ import com.alibaba.otter.shared.communication.model.arbitrate.StopNodeEvent;
 import com.alibaba.otter.shared.communication.model.config.ConfigEventType;
 import com.alibaba.otter.shared.communication.model.config.FindTaskEvent;
 import com.alibaba.otter.shared.communication.model.config.NotifyChannelEvent;
-import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * task节点对应的任务列表管理器
- * 
+ *
  * @author jianghang
  */
 public class NodeTaskServiceImpl implements NodeTaskService, InitializingBean {
 
-    private static final Logger         logger    = LoggerFactory.getLogger(NodeTaskService.class);
+    private static final Logger logger = LoggerFactory.getLogger(NodeTaskService.class);
 
-    private NodeCommmunicationClient    nodeCommmunicationClient;
+    private NodeCommmunicationClient nodeCommmunicationClient;
     private InternalConfigClientService configClientService;
-    private List<NodeTask>              allTasks  = Collections.synchronizedList(new ArrayList<NodeTask>());
-    private List<NodeTask>              incTasks  = Collections.synchronizedList(new ArrayList<NodeTask>());
-    private List<NodeTaskListener>      listeners = Collections.synchronizedList(new ArrayList<NodeTaskListener>());
+    private List<NodeTask> allTasks = Collections.synchronizedList(new ArrayList<NodeTask>());
+    private List<NodeTask> incTasks = Collections.synchronizedList(new ArrayList<NodeTask>());
+    private List<NodeTaskListener> listeners = Collections.synchronizedList(new ArrayList<NodeTaskListener>());
 
-    public NodeTaskServiceImpl(){
+    public NodeTaskServiceImpl() {
         CommunicationRegistry.regist(ConfigEventType.notifyChannel, this);
     }
 
+    @Override
     public synchronized List<NodeTask> listAllNodeTasks() {
         return allTasks;
     }
 
+    @Override
     public void afterPropertiesSet() throws Exception {
         // 初始化时调用manager获取channel任务
         initNodeTask();
@@ -199,12 +199,7 @@ public class NodeTaskServiceImpl implements NodeTaskService, InitializingBean {
             }
         }
 
-        List<Long> pipelineIds = Lists.transform(channel.getPipelines(), new Function<Pipeline, Long>() {
-
-            public Long apply(Pipeline input) {
-                return input.getId();
-            }
-        });
+        List<Long> pipelineIds = Lists.transform(channel.getPipelines(), Pipeline::getId);
         // 合并一下target中特有的记录，取一下反操作，表示要关闭
         for (NodeTask task : allTasks) {
             Pipeline pipeline = task.getPipeline();
@@ -441,6 +436,7 @@ public class NodeTaskServiceImpl implements NodeTaskService, InitializingBean {
         return result;
     }
 
+    @Override
     public void stopNode() {
         Node node = configClientService.currentNode();
         StopNodeEvent event = new StopNodeEvent();
@@ -448,6 +444,7 @@ public class NodeTaskServiceImpl implements NodeTaskService, InitializingBean {
         nodeCommmunicationClient.callManager(event);
     }
 
+    @Override
     public void addListener(NodeTaskListener listener) {
         Assert.notNull(listener);
         this.listeners.add(listener);

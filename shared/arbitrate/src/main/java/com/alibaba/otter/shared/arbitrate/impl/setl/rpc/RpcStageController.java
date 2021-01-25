@@ -16,14 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.rpc;
 
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang.ClassUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
@@ -34,39 +26,41 @@ import com.alibaba.otter.shared.arbitrate.impl.setl.rpc.monitor.ProcessListener;
 import com.alibaba.otter.shared.arbitrate.impl.setl.rpc.monitor.ProcessMonitor;
 import com.alibaba.otter.shared.arbitrate.model.EtlEventData;
 import com.alibaba.otter.shared.common.model.config.enums.StageType;
-import com.google.common.base.Function;
-import com.google.common.collect.MapMaker;
 import com.google.common.collect.OtterMigrateMap;
+import org.apache.commons.lang.ClassUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 基于rpc的stage调度控制器，排除select调度,主要控制e/t/l的调度控制
- * 
+ *
  * @author jianghang 2012-9-28 下午10:05:26
  * @version 4.1.0
  */
 public class RpcStageController extends ArbitrateLifeCycle implements ProcessListener {
 
-    private static final Logger               logger                 = LoggerFactory.getLogger(RpcStageController.class);
-    private Map<StageType, ReplyProcessQueue> replys;
-    private Map<Long, StageProgress>          progress;
-    private ProcessMonitor                    processMonitor;
-    private volatile Long                     lastestLoadedProcessId = -1L;                                              // 最近一次同步成功的processId
+    private static final Logger logger = LoggerFactory.getLogger(RpcStageController.class);
+    private final Map<StageType, ReplyProcessQueue> replys;
+    private final Map<Long, StageProgress> progress = new ConcurrentHashMap<>();
+    private final ProcessMonitor processMonitor;
+    private volatile Long lastestLoadedProcessId = -1L;                                              // 最近一次同步成功的processId
 
-    public RpcStageController(Long pipelineId){
+    public RpcStageController(Long pipelineId) {
         super(pipelineId);
 
-        replys = OtterMigrateMap.makeComputingMap(new Function<StageType, ReplyProcessQueue>() {
-
-            public ReplyProcessQueue apply(StageType input) {
-                int size = ArbitrateConfigUtils.getParallelism(getPipelineId()) * 10;
-                if (size < 100) {
-                    size = 100;
-                }
-                return new ReplyProcessQueue(size);
+        replys = OtterMigrateMap.makeComputingMap(input -> {
+            int size = ArbitrateConfigUtils.getParallelism(getPipelineId()) * 10;
+            if (size < 100) {
+                size = 100;
             }
+            return new ReplyProcessQueue(size);
         });
 
-        progress = new MapMaker().makeMap();
         // 注册一下监听事件变化
         processMonitor = ArbitrateFactory.getInstance(pipelineId, ProcessMonitor.class);
         processMonitor.addListener(this);
@@ -88,6 +82,7 @@ public class RpcStageController extends ArbitrateLifeCycle implements ProcessLis
         return progress.get(processId).getData();
     }
 
+    @Override
     public void destory() {
         processMonitor.removeListener(this);
         replys.clear();
@@ -186,6 +181,7 @@ public class RpcStageController extends ArbitrateLifeCycle implements ProcessLis
         return null;
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         compareProgress(processIds);
 
@@ -226,7 +222,7 @@ public class RpcStageController extends ArbitrateLifeCycle implements ProcessLis
                     Long processId = processIds.get(0);
                     if (processId > (Long) replyId) { // 如果当前最小的processId都大于replyId, processId都是递增创建的
                         logger.info("## {} remove reply id [{}]", ClassUtils.getShortClassName(this.getClass()),
-                                    (Long) replyId);
+                                (Long) replyId);
                         replyProcessIds.remove((Long) replyId);
                         progress.remove((Long) replyId);
                     }

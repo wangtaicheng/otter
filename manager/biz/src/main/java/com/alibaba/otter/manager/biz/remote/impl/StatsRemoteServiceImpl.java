@@ -16,18 +16,6 @@
 
 package com.alibaba.otter.manager.biz.remote.impl;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.manager.biz.remote.StatsRemoteService;
 import com.alibaba.otter.manager.biz.statistics.delay.DelayStatService;
 import com.alibaba.otter.manager.biz.statistics.table.TableStatService;
@@ -43,73 +31,68 @@ import com.alibaba.otter.shared.communication.model.statistics.DelayCountEvent;
 import com.alibaba.otter.shared.communication.model.statistics.StatisticsEventType;
 import com.alibaba.otter.shared.communication.model.statistics.TableStatEvent;
 import com.alibaba.otter.shared.communication.model.statistics.ThroughputStatEvent;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 统计模块远程接口
- * 
+ *
  * @author jianghang 2011-10-21 下午03:04:40
  * @version 4.0.0
  */
 public class StatsRemoteServiceImpl implements StatsRemoteService {
 
-    private static final Logger                            logger       = LoggerFactory.getLogger(StatsRemoteServiceImpl.class);
-    private static final int                               DEFAULT_POOL = 10;
-    private DelayStatService                               delayStatService;
-    private TableStatService                               tableStatService;
-    private ThroughputStatService                          throughputStatService;
-    private Long                                           statUnit     = 60 * 1000L;                                           //统计周期，默认60秒
-    private ScheduledThreadPoolExecutor                    scheduler;
-    private Map<Long, AvgStat>                             delayStats;
+    private static final Logger logger = LoggerFactory.getLogger(StatsRemoteServiceImpl.class);
+    private static final int DEFAULT_POOL = 10;
+    private DelayStatService delayStatService;
+    private TableStatService tableStatService;
+    private ThroughputStatService throughputStatService;
+    private Long statUnit = 60 * 1000L;                                           //统计周期，默认60秒
+    private ScheduledThreadPoolExecutor scheduler;
+    private Map<Long, AvgStat> delayStats;
     private Map<Long, Map<ThroughputType, ThroughputStat>> throughputStats;
 
-    public StatsRemoteServiceImpl(){
+    public StatsRemoteServiceImpl() {
         // 注册一下事件处理
         CommunicationRegistry.regist(StatisticsEventType.delayCount, this);
         CommunicationRegistry.regist(StatisticsEventType.tableStat, this);
         CommunicationRegistry.regist(StatisticsEventType.throughputStat, this);
 
-        delayStats = OtterMigrateMap.makeComputingMap(new Function<Long, AvgStat>() {
-
-            public AvgStat apply(Long pipelineId) {
-                return new AvgStat();
-            }
-        });
-        throughputStats = OtterMigrateMap.makeComputingMap(new Function<Long, Map<ThroughputType, ThroughputStat>>() {
-
-            public Map<ThroughputType, ThroughputStat> apply(Long pipelineId) {
-                return new HashMap<ThroughputType, ThroughputStat>();
-            }
-        });
+        delayStats = OtterMigrateMap.makeComputingMap(pipelineId -> new AvgStat());
+        throughputStats = OtterMigrateMap.makeComputingMap(pipelineId -> new HashMap<ThroughputType, ThroughputStat>());
 
         scheduler = new ScheduledThreadPoolExecutor(DEFAULT_POOL, new NamedThreadFactory("Otter-Statistics-Server"),
-                                                    new ThreadPoolExecutor.CallerRunsPolicy());
+                new ThreadPoolExecutor.CallerRunsPolicy());
         if (statUnit > 0) {
-            scheduler.scheduleAtFixedRate(new Runnable() {
-
-                public void run() {
-                    try {
-                        flushDelayStat();
-                    } catch (Exception e) {
-                        logger.error("flush delay stat failed!", e);
-                    }
+            scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    flushDelayStat();
+                } catch (Exception e) {
+                    logger.error("flush delay stat failed!", e);
                 }
             }, statUnit, statUnit, TimeUnit.MILLISECONDS);
 
-            scheduler.scheduleAtFixedRate(new Runnable() {
-
-                public void run() {
-                    try {
-                        flushThroughputStat();
-                    } catch (Exception e) {
-                        logger.error("flush Throughput stat failed!", e);
-                    }
+            scheduler.scheduleAtFixedRate(() -> {
+                try {
+                    flushThroughputStat();
+                } catch (Exception e) {
+                    logger.error("flush Throughput stat failed!", e);
                 }
             }, statUnit, statUnit, TimeUnit.MILLISECONDS);
         }
     }
 
+    @Override
     public void onDelayCount(DelayCountEvent event) {
         Assert.notNull(event);
         Assert.notNull(event.getCount());
@@ -131,6 +114,7 @@ public class StatsRemoteServiceImpl implements StatsRemoteService {
         }
     }
 
+    @Override
     public void onThroughputStat(ThroughputStatEvent event) {
         Assert.notNull(event);
         Assert.notNull(event.getStats());
@@ -162,6 +146,7 @@ public class StatsRemoteServiceImpl implements StatsRemoteService {
         }
     }
 
+    @Override
     public void onTableStat(TableStatEvent event) {
         Assert.notNull(event);
         Assert.notNull(event.getStats());
@@ -201,7 +186,7 @@ public class StatsRemoteServiceImpl implements StatsRemoteService {
     public static class AvgStat {
 
         private AtomicLong number = new AtomicLong(0L);
-        private AtomicLong count  = new AtomicLong(0L);
+        private AtomicLong count = new AtomicLong(0L);
 
         public void merge(DelayStat stat) {
             count.incrementAndGet();

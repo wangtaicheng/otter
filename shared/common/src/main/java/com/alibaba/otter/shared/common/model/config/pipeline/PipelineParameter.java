@@ -39,62 +39,74 @@ import java.lang.reflect.Modifier;
  */
 public class PipelineParameter implements Serializable {
 
-    private static final long                  serialVersionUID  = 8112362911827913152L;
-    private              Long                  pipelineId;
-    private              Long                  parallelism       = 3L;                          // 并行度
-    private              LoadBanlanceAlgorithm lbAlgorithm       = LoadBanlanceAlgorithm.Random; // 负载均衡算法
-    private              Boolean               home              = false;                       // 是否为主站点
-    private              SelectorMode          selectorMode      = SelectorMode.Canal;          // 数据获取方式
-    private              String                destinationName;
-    private              Short                 mainstemClientId;                                         // mainstem订阅id
-    private              Integer               mainstemBatchsize = 10000 * 10;                  // mainstem订阅批次大小
-    private              Integer               extractPoolSize   = 5;                           // extract模块载入线程数，针对单个载入通道
-    private              Integer               loadBatchSize     = 50;                          // load批次大小
-    private              Integer               loadPoolSize      = 5;                           // load模块载入线程数，针对单个载入通道
-    private              Integer               fileLoadPoolSize  = 5;                           // 文件同步线程数
+    private static final long serialVersionUID = 8112362911827913152L;
+    private Long pipelineId;
+    private Long parallelism = 3L;                          // 并行度
+    private LoadBanlanceAlgorithm lbAlgorithm = LoadBanlanceAlgorithm.Random; // 负载均衡算法
+    private Boolean home = false;                       // 是否为主站点
+    private SelectorMode selectorMode = SelectorMode.Canal;          // 数据获取方式
+    private String destinationName;
+    private Short mainstemClientId;                                         // mainstem订阅id
+    private Integer mainstemBatchsize = 10000 * 10;                  // mainstem订阅批次大小
+    private Integer extractPoolSize = 5;                           // extract模块载入线程数，针对单个载入通道
+    private Integer loadBatchSize = 50;                          // load批次大小
+    private Integer loadPoolSize = 5;                           // load模块载入线程数，针对单个载入通道
+    private Integer fileLoadPoolSize = 5;                           // 文件同步线程数
 
-    private Boolean        dumpEvent                  = true;                        // 是否需要dumpevent对象
-    private Boolean        dumpSelector               = true;                        // 是否需要dumpSelector信息
-    private Boolean        dumpSelectorDetail         = true;                        // 是否需要dumpSelector的详细信息
-    private PipeChooseMode pipeChooseType             = PipeChooseMode.AUTOMATIC;    // pipe传输模式
-    private Boolean        useBatch                   = true;                        // 是否使用batch模式
-    private Boolean        skipSelectException        = false;                       // 是否跳过select时的执行异常
-    private Boolean        skipLoadException          = false;                       // 是否跳过load时的执行异常
-    private ArbitrateMode  arbitrateMode              = ArbitrateMode.ZOOKEEPER;     // 调度模式，默认进行自动选择
-    private Long           batchTimeout               = -1L;                         // 获取批量数据的超时时间,-1代表不进行超时控制，0代表永久，>0则表示按照指定的时间进行控制(单位毫秒)
-    private Boolean        fileDetect                 = false;                       // 是否开启文件同步检测
-    private Boolean        skipFreedom                = false;                       // 是否跳过自由门数据
-    private Boolean        useLocalFileMutliThread    = false;                       // 是否启用对local
+    private Boolean dumpEvent = true;                        // 是否需要dumpevent对象
+    private Boolean dumpSelector = true;                        // 是否需要dumpSelector信息
+    private Boolean dumpSelectorDetail = true;                        // 是否需要dumpSelector的详细信息
+    private PipeChooseMode pipeChooseType = PipeChooseMode.AUTOMATIC;    // pipe传输模式
+    private Boolean useBatch = true;                        // 是否使用batch模式
+    private Boolean skipSelectException = false;                       // 是否跳过select时的执行异常
+    private Boolean skipLoadException = false;                       // 是否跳过load时的执行异常
+    private ArbitrateMode arbitrateMode = ArbitrateMode.ZOOKEEPER;     // 调度模式，默认进行自动选择
+    private Long batchTimeout = -1L;                         // 获取批量数据的超时时间,-1代表不进行超时控制，0代表永久，>0则表示按照指定的时间进行控制(单位毫秒)
+    private Boolean fileDetect = false;                       // 是否开启文件同步检测
+    private Boolean skipFreedom = false;                       // 是否跳过自由门数据
+    private Boolean useLocalFileMutliThread = false;                       // 是否启用对local
     // file同步启用多线程
-    private Boolean        useFileEncrypt             = false;                       // 是否针对文件进行加密处理
-    private Boolean        useExternalIp              = false;                       // 是否起用外部Ip
-    private Boolean        useTableTransform          = false;                       // 是否启用转化机制，比如类型不同，默认为true，兼容老逻辑
-    private Boolean        enableCompatibleMissColumn = true;                        // 是否启用兼容字段不匹配处理
-    private Boolean        skipNoRow                  = false;                       // 跳过反查没记录的情况
-    private String         channelInfo;                                              // 同步标记，设置该标记后会在retl_mark中记录，在messageParse时进行check，相同则忽略
-    private Boolean        dryRun                     = false;                       // 是否启用dry
+    private Boolean useFileEncrypt = false;                       // 是否针对文件进行加密处理
+    private Boolean useExternalIp = false;                       // 是否起用外部Ip
+    private Boolean useTableTransform = false;                       // 是否启用转化机制，比如类型不同，默认为true，兼容老逻辑
+    private Boolean enableCompatibleMissColumn = true;                        // 是否启用兼容字段不匹配处理
+    private Boolean skipNoRow = false;                       // 跳过反查没记录的情况
+    private String channelInfo;                                              // 同步标记，设置该标记后会在retl_mark中记录，在messageParse时进行check，相同则忽略
+    private Boolean dryRun = false;                       // 是否启用dry
     // run模型，只记录load日志，不同步数据
-    private Boolean        ddlSync                    = true;                        // 是否支持ddl同步
-    private Boolean        skipDdlException           = false;                       // 是否跳过ddl执行异常
+    private Boolean ddlSync = true;                        // 是否支持ddl同步
+    private Boolean skipDdlException = false;                       // 是否跳过ddl执行异常
 
     // ================================= channel parameter
     // ================================
 
-    @Transient private Boolean         enableRemedy;                                             // 是否启用冲突补救算法
-    @Transient private RemedyAlgorithm remedyAlgorithm;                                          // 冲突补救算法
-    @Transient private Integer         remedyDelayThresoldForMedia;                              // 针对回环补救，如果反查速度过快，容易查到旧版本的数据记录，导致中美不一致，所以设置一个阀值，低于这个阀值的延迟不进行反查
-    @Transient private SyncMode        syncMode;                                                 // 同步模式：字段/整条记录
-    @Transient private SyncConsistency syncConsistency;                                          // 同步一致性要求
+    @Transient
+    private Boolean enableRemedy;                                             // 是否启用冲突补救算法
+    @Transient
+    private RemedyAlgorithm remedyAlgorithm;                                          // 冲突补救算法
+    @Transient
+    private Integer remedyDelayThresoldForMedia;                              // 针对回环补救，如果反查速度过快，容易查到旧版本的数据记录，导致中美不一致，所以设置一个阀值，低于这个阀值的延迟不进行反查
+    @Transient
+    private SyncMode syncMode;                                                 // 同步模式：字段/整条记录
+    @Transient
+    private SyncConsistency syncConsistency;                                          // 同步一致性要求
 
     // ================================= system parameter
     // ================================
-    @Transient private String        systemSchema;                                             // 默认为retl，不允许为空
-    @Transient private String        systemMarkTable;                                          // 双向同步标记表
-    @Transient private String        systemMarkTableColumn;                                    // 双向同步标记的列名
-    @Transient private String        systemMarkTableInfo;                                      // 双向同步标记的info信息，比如类似BI_SYNC
-    @Transient private String        systemBufferTable;                                        // otter同步buffer表
-    @Transient private String        systemDualTable;                                          // otter同步心跳表
-    @Transient private RetrieverType retriever;                                                // 下载方式
+    @Transient
+    private String systemSchema;                                             // 默认为retl，不允许为空
+    @Transient
+    private String systemMarkTable;                                          // 双向同步标记表
+    @Transient
+    private String systemMarkTableColumn;                                    // 双向同步标记的列名
+    @Transient
+    private String systemMarkTableInfo;                                      // 双向同步标记的info信息，比如类似BI_SYNC
+    @Transient
+    private String systemBufferTable;                                        // otter同步buffer表
+    @Transient
+    private String systemDualTable;                                          // otter同步心跳表
+    @Transient
+    private RetrieverType retriever;                                                // 下载方式
 
     /**
      * 合并pipeline参数设置
@@ -338,7 +350,7 @@ public class PipelineParameter implements Serializable {
 
     public Boolean getSkipLoadException() {
         // 兼容性处理
-        return skipLoadException == null ? false : skipLoadException;
+        return skipLoadException != null && skipLoadException;
     }
 
     public void setSkipLoadException(Boolean skipLoadException) {
@@ -363,7 +375,7 @@ public class PipelineParameter implements Serializable {
 
     public Boolean getDumpSelector() {
         // 兼容性处理
-        return dumpSelector == null ? true : dumpSelector;
+        return dumpSelector == null || dumpSelector;
     }
 
     public void setDumpSelector(Boolean dumpSelector) {
@@ -372,7 +384,7 @@ public class PipelineParameter implements Serializable {
 
     public Boolean getDumpSelectorDetail() {
         // 兼容性处理
-        return dumpSelectorDetail == null ? true : dumpSelectorDetail;
+        return dumpSelectorDetail == null || dumpSelectorDetail;
     }
 
     public void setDumpSelectorDetail(Boolean dumpSelectorDetail) {
@@ -400,7 +412,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getFileDetect() {
-        return fileDetect == null ? false : fileDetect;
+        return fileDetect != null && fileDetect;
     }
 
     public void setFileDetect(Boolean fileDetect) {
@@ -416,7 +428,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getSkipFreedom() {
-        return skipFreedom == null ? false : skipFreedom;
+        return skipFreedom != null && skipFreedom;
     }
 
     public void setSkipFreedom(Boolean skipFreedom) {
@@ -432,7 +444,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getUseLocalFileMutliThread() {
-        return useLocalFileMutliThread == null ? false : useLocalFileMutliThread;
+        return useLocalFileMutliThread != null && useLocalFileMutliThread;
     }
 
     public void setUseLocalFileMutliThread(Boolean useLocalFileMutliThread) {
@@ -440,7 +452,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getUseExternalIp() {
-        return useExternalIp == null ? false : useExternalIp;
+        return useExternalIp != null && useExternalIp;
     }
 
     public void setUseExternalIp(Boolean useExternalIp) {
@@ -448,7 +460,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getUseFileEncrypt() {
-        return useFileEncrypt == null ? false : useFileEncrypt;
+        return useFileEncrypt != null && useFileEncrypt;
     }
 
     public void setUseFileEncrypt(Boolean useFileEncrypt) {
@@ -456,7 +468,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getUseTableTransform() {
-        return useTableTransform == null ? true : useTableTransform;
+        return useTableTransform == null || useTableTransform;
     }
 
     public void setUseTableTransform(Boolean useTableTransform) {
@@ -464,7 +476,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getSkipNoRow() {
-        return skipNoRow == null ? false : skipNoRow;
+        return skipNoRow != null && skipNoRow;
     }
 
     public void setSkipNoRow(Boolean skipNoRow) {
@@ -472,7 +484,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getEnableCompatibleMissColumn() {
-        return enableCompatibleMissColumn == null ? true : enableCompatibleMissColumn;
+        return enableCompatibleMissColumn == null || enableCompatibleMissColumn;
     }
 
     public void setEnableCompatibleMissColumn(Boolean enableCompatibleMissColumn) {
@@ -488,11 +500,11 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getDryRun() {
-        return dryRun == null ? false : dryRun;
+        return dryRun != null && dryRun;
     }
 
-    public Boolean isDryRun() {
-        return dryRun == null ? false : dryRun;
+    public boolean isDryRun() {
+        return dryRun != null && dryRun;
     }
 
     public void setDryRun(Boolean dryRun) {
@@ -500,7 +512,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getDdlSync() {
-        return ddlSync == null ? true : ddlSync;
+        return ddlSync == null || ddlSync;
     }
 
     public void setDdlSync(Boolean ddlSync) {
@@ -508,7 +520,7 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getSkipDdlException() {
-        return skipDdlException == null ? false : skipDdlException;
+        return skipDdlException != null && skipDdlException;
     }
 
     public void setSkipDdlException(Boolean skipDdlException) {
@@ -637,14 +649,15 @@ public class PipelineParameter implements Serializable {
     }
 
     public Boolean getSkipSelectException() {
-        return skipSelectException == null ? false : skipSelectException;
+        return skipSelectException != null && skipSelectException;
     }
 
     public void setSkipSelectException(Boolean skipSelectException) {
         this.skipSelectException = skipSelectException;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return ToStringBuilder.reflectionToString(this, OtterToStringStyle.DEFAULT_STYLE);
     }
 

@@ -25,31 +25,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 权重控制器
- * 
+ *
  * @author jianghang 2011-11-2 上午10:34:19
  * @version 4.0.0
  */
 public class WeightController {
 
-    private AtomicInteger       latch;
-    private WeightBarrier       barrier;
-    private BlockingQueue<Long> weights = new PriorityBlockingQueue<Long>();
+    private AtomicInteger latch;
+    private WeightBarrier barrier;
+    private BlockingQueue<Long> weights = new PriorityBlockingQueue<>();
 
-    public WeightController(int load){
+    public WeightController(int load) {
         latch = new AtomicInteger(load);
         barrier = new WeightBarrier(Integer.MIN_VALUE);
     }
 
     /**
      * 每个loader任务报告启动的第一个任务的weight
-     * 
+     *
      * @throws InterruptedException
      */
     public synchronized void start(List<Long> weights) throws InterruptedException {
-        for (int i = 0; i < weights.size(); i++) {
-            this.weights.add(weights.get(i));
-        }
-
+        this.weights.addAll(weights);
         int number = latch.decrementAndGet();
         if (number == 0) {
             Long initWeight = this.weights.peek();
@@ -61,7 +58,7 @@ public class WeightController {
 
     /**
      * 等待自己当前的weight任务可以被执行
-     * 
+     *
      * @throws InterruptedException
      */
     public void await(long weight) throws InterruptedException {
@@ -70,7 +67,7 @@ public class WeightController {
 
     /**
      * 等待自己当前的weight任务可以被执行,带超时控制
-     * 
+     *
      * @throws InterruptedException
      * @throws TimeoutException
      */
@@ -80,7 +77,7 @@ public class WeightController {
 
     /**
      * 通知下一个weight任务可以被执行
-     * 
+     *
      * @throws InterruptedException
      */
     public synchronized void single(long weight) throws InterruptedException {

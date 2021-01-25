@@ -23,11 +23,12 @@ import com.alibaba.otter.shared.etl.extend.fileresolver.FileResolver;
  * @version 4.1.0
  */
 public abstract class AbstractFileResolver implements FileResolver {
-
+    @Override
     public boolean isDeleteRequired() {
         return false;
     }
 
+    @Override
     public boolean isDistributed() {
         return false;
     }

@@ -16,10 +16,6 @@
 
 package com.alibaba.otter.canal.extend.ha;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.parse.CanalHASwitchable;
 import com.alibaba.otter.canal.parse.exception.CanalHAException;
@@ -29,37 +25,41 @@ import com.alibaba.otter.common.push.supplier.DatasourceChangeCallback;
 import com.alibaba.otter.common.push.supplier.DatasourceInfo;
 import com.alibaba.otter.common.push.supplier.DatasourceSupplier;
 import com.alibaba.otter.common.push.supplier.media.MediaDatasourceSupplier;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 基于media的HA控制机制
- * 
+ *
  * @author jianghang 2012-7-6 下午02:48:21
  * @version 4.1.0
  */
 public class MediaHAController extends AbstractCanalLifeCycle implements CanalHAController {
 
-    private static Logger               log = LoggerFactory.getLogger(MediaHAController.class);
+    private static final Logger log = LoggerFactory.getLogger(MediaHAController.class);
 
-    private String                      group;
-    private String                      customUser;
-    private String                      customPasswd;
-    private String                      customSchema;
+    private String group;
+    private String customUser;
+    private String customPasswd;
+    private String customSchema;
 
-    private DatasourceSupplier          supplier;
-    private CanalHASwitchable           canalHASwitchable;
+    private DatasourceSupplier supplier;
+    private CanalHASwitchable canalHASwitchable;
     private volatile AuthenticationInfo availableAuthenticationInfo;
 
-    public MediaHAController(String group){
+    public MediaHAController(String group) {
         this.group = group;
     }
 
-    public MediaHAController(String group, String customUser, String customPasswd, String customSchema){
+    public MediaHAController(String group, String customUser, String customPasswd, String customSchema) {
         this.group = group;
         this.customUser = customUser;
         this.customPasswd = customPasswd;
         this.customSchema = customSchema;
     }
 
+    @Override
     public void start() throws CanalHAException {
         super.start();
 
@@ -75,12 +75,12 @@ public class MediaHAController extends AbstractCanalLifeCycle implements CanalHA
         AuthenticationInfo masterFetched = AuthenticationInfoUtils.createFrom(fetched);
 
         log.info(String.format("medialHAController started for  goup:[%s], and first auth info is : [%s]", this.group,
-                               masterFetched));
+                masterFetched));
 
         this.availableAuthenticationInfo = customInfoIfNecessay(masterFetched);
 
         log.info(String.format("medialHAController customed for goup:[%s], and first auth info is : [%s]", this.group,
-                               this.availableAuthenticationInfo));
+                this.availableAuthenticationInfo));
 
         this.supplier.addSwtichCallback(new DatasourceChangeCallback() {
 
@@ -95,10 +95,11 @@ public class MediaHAController extends AbstractCanalLifeCycle implements CanalHA
     private void validate() {
         if (StringUtils.isEmpty(this.group)) {
             throw new IllegalStateException(String.format("app or group is empty, app is [%s] , group is [%s]",
-                                                          this.group));
+                    this.group));
         }
     }
 
+    @Override
     public void stop() throws CanalHAException {
         super.stop();
         this.supplier.stop();
@@ -106,12 +107,12 @@ public class MediaHAController extends AbstractCanalLifeCycle implements CanalHA
 
     private void switchEventSource(AuthenticationInfo newMaster) {
         log.warn(String.format("MediaHAController received a datasource swith from [%s] to [%s]",
-                               availableAuthenticationInfo, newMaster));
+                availableAuthenticationInfo, newMaster));
 
         customInfoIfNecessay(newMaster);
 
         log.warn(String.format("MediaHAController customed a datasource swith from [%s] to [%s]",
-                               availableAuthenticationInfo, newMaster));
+                availableAuthenticationInfo, newMaster));
 
         availableAuthenticationInfo = newMaster;
         this.canalHASwitchable.doSwitch(newMaster);
@@ -151,7 +152,7 @@ public class MediaHAController extends AbstractCanalLifeCycle implements CanalHA
 
     /**
      * override custom field
-     * 
+     *
      * @param authenticationInfo
      */
     protected AuthenticationInfo customInfoIfNecessay(AuthenticationInfo authenticationInfo) {

@@ -16,15 +16,6 @@
 
 package com.alibaba.otter.node.etl.transform.transformer;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.ddlutils.model.Column;
-import org.apache.ddlutils.model.Table;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialect;
 import com.alibaba.otter.node.etl.common.db.dialect.DbDialectFactory;
 import com.alibaba.otter.node.etl.common.db.utils.DdlUtils;
@@ -40,10 +31,18 @@ import com.alibaba.otter.shared.etl.model.EventData;
 import com.alibaba.otter.shared.etl.model.EventType;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.ddlutils.model.Column;
+import org.apache.ddlutils.model.Table;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * RowData -> RowData数据的转换
- * 
+ *
  * @author jianghang 2011-10-27 下午04:11:45
  * @version 4.0.0
  */
@@ -51,6 +50,7 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
 
     private DbDialectFactory dbDialectFactory;
 
+    @Override
     public EventData transform(EventData data, OtterTransformerContext context) {
         EventData result = new EventData();
         // 处理Table转化
@@ -70,7 +70,7 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
         if (data.getEventType().isDdl()) {
             // ddl不需要处理字段
             if (StringUtils.equalsIgnoreCase(result.getSchemaName(), data.getSchemaName())
-                && StringUtils.equalsIgnoreCase(result.getTableName(), data.getTableName())) {
+                    && StringUtils.equalsIgnoreCase(result.getTableName(), data.getTableName())) {
                 // 是否需要对ddl sql进行转化，暂时不支持异构，必须保证源表和目标表的名字相同
                 result.setDdlSchemaName(data.getDdlSchemaName());
                 result.setSql(data.getSql());
@@ -78,10 +78,10 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
             } else {
                 // 动态转换ddl sql,替换库名和表名
                 String sql = DdlUtils.convert(data.getSql(),
-                    data.getSchemaName(),
-                    data.getTableName(),
-                    result.getSchemaName(),
-                    result.getTableName());
+                        data.getSchemaName(),
+                        data.getTableName(),
+                        result.getSchemaName(),
+                        result.getTableName());
                 result.setDdlSchemaName(result.getSchemaName());
                 result.setSql(sql);
                 return result;
@@ -94,10 +94,12 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
         }
 
         Multimap<String, String> translateColumnNames = HashMultimap.create();
-        if (context.getDataMediaPair().getColumnPairMode().isInclude()) { // 只针对正向匹配进行名字映射，exclude不做处理
+        // 只针对正向匹配进行名字映射，exclude不做处理
+        if (context.getDataMediaPair().getColumnPairMode().isInclude()) {
             List<ColumnPair> columnPairs = context.getDataMediaPair().getColumnPairs();
             for (ColumnPair columnPair : columnPairs) {
-                translateColumnNames.put(columnPair.getSourceColumn().getName(), columnPair.getTargetColumn().getName());
+                translateColumnNames
+                        .put(columnPair.getSourceColumn().getName(), columnPair.getTargetColumn().getName());
             }
         }
         // 准备一下table meta
@@ -106,10 +108,10 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
         boolean enableCompatibleMissColumn = context.getPipeline().getParameters().getEnableCompatibleMissColumn();
         TableInfoHolder tableHolder = null;
         if (useTableTransform || enableCompatibleMissColumn) {// 控制一下是否需要反查table
-                                                              // meta信息，如果同构数据库，完全没必要反查
+            // meta信息，如果同构数据库，完全没必要反查
             // 获取目标库的表信息
             DbDialect dbDialect = dbDialectFactory.getDbDialect(dataMediaPair.getPipelineId(),
-                (DbMediaSource) dataMedia.getSource());
+                    (DbMediaSource) dataMedia.getSource());
 
             Table table = dbDialect.findTable(result.getSchemaName(), result.getTableName());
             tableHolder = new TableInfoHolder(table, useTableTransform, enableCompatibleMissColumn);
@@ -117,17 +119,17 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
 
         // 处理column转化
         List<EventColumn> otherColumns = translateColumns(result,
-            data.getColumns(),
-            context.getDataMediaPair(),
-            translateColumnNames,
-            tableHolder);
+                data.getColumns(),
+                context.getDataMediaPair(),
+                translateColumnNames,
+                tableHolder);
         translatePkColumn(result,
-            data.getKeys(),
-            data.getOldKeys(),
-            otherColumns,
-            context.getDataMediaPair(),
-            translateColumnNames,
-            tableHolder);
+                data.getKeys(),
+                data.getOldKeys(),
+                otherColumns,
+                context.getDataMediaPair(),
+                translateColumnNames,
+                tableHolder);
 
         result.setColumns(otherColumns);
         return result;
@@ -135,7 +137,7 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
 
     /**
      * 设置对应的目标库schema.name，需要考虑mutl配置情况
-     * 
+     *
      * <pre>
      * case:
      * 1. 源:offer , 目：offer
@@ -147,8 +149,8 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
         DataMedia targetDataMedia = pair.getTarget();
         DataMedia sourceDataMedia = pair.getSource();
         String schemaName = buildName(data.getSchemaName(),
-            sourceDataMedia.getNamespaceMode(),
-            targetDataMedia.getNamespaceMode());
+                sourceDataMedia.getNamespaceMode(),
+                targetDataMedia.getNamespaceMode());
         String tableName = buildName(data.getTableName(), sourceDataMedia.getNameMode(), targetDataMedia.getNameMode());
         result.setSchemaName(schemaName);
         result.setTableName(tableName);
@@ -173,7 +175,7 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
     private List<EventColumn> translateColumns(EventData data, List<EventColumn> columns, DataMediaPair dataMediaPair,
                                                Multimap<String, String> translateColumnNames,
                                                TableInfoHolder tableHolder) {
-        List<EventColumn> tcolumns = new ArrayList<EventColumn>();
+        List<EventColumn> tcolumns = new ArrayList<>();
         for (EventColumn scolumn : columns) {
             EventColumn tcolumn = translateColumn(data, scolumn, tableHolder, dataMediaPair, translateColumnNames);
             if (tcolumn != null) {
@@ -253,7 +255,7 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
         String columnName = translateColumnName(scolumn.getColumnName(), dataMediaPair, translateColumnNames);
         if (StringUtils.isBlank(columnName)) {
             throw new TransformException("can't translate column name:" + scolumn.getColumnName() + "in pair:"
-                                         + dataMediaPair.toString());
+                    + dataMediaPair.toString());
         }
 
         // 特殊处理
@@ -287,7 +289,8 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
                 if (StringUtils.isEmpty(schemaName)) {
                     schemaName = tableHolder.getTable().getCatalog();
                 }
-                Table table = dbDialect.findTable(schemaName, tableHolder.getTable().getName(), false); // 强制反查一次，并放入cache
+                Table table = dbDialect
+                        .findTable(schemaName, tableHolder.getTable().getName(), false); // 强制反查一次，并放入cache
 
                 tableHolder.setTable(table);
                 matchDbColumn = getMatchColumn(tableHolder.getTable().getColumns(), tcolumn.getColumnName());
@@ -296,8 +299,8 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
                         return null;
                     } else {
                         throw new TransformException(scolumn.getColumnName() + " is not found in " + table.toString()
-                                                     + " and source : " + dataMediaPair.getTarget().getNamespace()
-                                                     + "." + dataMediaPair.getTarget().getName());
+                                + " and source : " + dataMediaPair.getTarget().getNamespace()
+                                + "." + dataMediaPair.getTarget().getName());
                     }
                 }
             }
@@ -384,17 +387,17 @@ public class RowDataTransformer extends AbstractOtterTransformer<EventData, Even
 
     /**
      * 实现可reload的table meta，可替换table属性.
-     * 
+     *
      * @author jianghang 2012-5-16 下午04:34:18
      * @version 4.0.2
      */
     static class TableInfoHolder {
 
-        private Table   table;
-        private boolean useTableTransform          = true;
+        private Table table;
+        private boolean useTableTransform = true;
         private boolean enableCompatibleMissColumn = true;
 
-        public TableInfoHolder(Table table, boolean useTableTransform, boolean enableCompatibleMissColumn){
+        public TableInfoHolder(Table table, boolean useTableTransform, boolean enableCompatibleMissColumn) {
             this.useTableTransform = useTableTransform;
             this.enableCompatibleMissColumn = enableCompatibleMissColumn;
             this.table = table;

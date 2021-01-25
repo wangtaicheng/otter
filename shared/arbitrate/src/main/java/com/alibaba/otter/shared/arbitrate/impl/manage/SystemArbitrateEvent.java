@@ -16,6 +16,13 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.manage;
 
+import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
+import com.alibaba.otter.shared.arbitrate.impl.ArbitrateEvent;
+import com.alibaba.otter.shared.arbitrate.impl.manage.helper.ManagePathUtils;
+import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
+import com.alibaba.otter.shared.arbitrate.model.MainStemEventData;
+import com.alibaba.otter.shared.common.utils.JsonUtils;
+import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
 import org.I0Itec.zkclient.exception.ZkBadVersionException;
 import org.I0Itec.zkclient.exception.ZkException;
 import org.I0Itec.zkclient.exception.ZkNoNodeException;
@@ -25,24 +32,16 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
-import com.alibaba.otter.shared.arbitrate.impl.ArbitrateEvent;
-import com.alibaba.otter.shared.arbitrate.impl.manage.helper.ManagePathUtils;
-import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
-import com.alibaba.otter.shared.arbitrate.model.MainStemEventData;
-import com.alibaba.otter.shared.common.utils.JsonUtils;
-import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
-
 /**
  * otter系统节点初始化
- * 
+ *
  * @author jianghang 2012-2-16 下午04:38:33
  * @version 4.0.0
  */
 public class SystemArbitrateEvent implements ArbitrateEvent {
 
-    private static final Logger logger    = LoggerFactory.getLogger(SystemArbitrateEvent.class);
-    private ZkClientx           zookeeper = ZooKeeperClient.getInstance();
+    private static final Logger logger = LoggerFactory.getLogger(SystemArbitrateEvent.class);
+    private final ZkClientx zookeeper = ZooKeeperClient.getInstance();
 
     /**
      * 初始化对应的系统节点,同步调用

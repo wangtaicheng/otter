@@ -16,52 +16,41 @@
 
 package com.alibaba.otter.shared.common.model.config;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.oro.text.regex.MalformedPatternException;
-import org.apache.oro.text.regex.MatchResult;
-import org.apache.oro.text.regex.Pattern;
-import org.apache.oro.text.regex.PatternCompiler;
-import org.apache.oro.text.regex.PatternMatcher;
-import org.apache.oro.text.regex.Perl5Compiler;
-import org.apache.oro.text.regex.Perl5Matcher;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.shared.common.model.config.data.DataMedia;
 import com.alibaba.otter.shared.common.model.config.data.DataMedia.Mode;
 import com.alibaba.otter.shared.common.model.config.data.DataMedia.ModeValue;
 import com.alibaba.otter.shared.common.model.config.data.DataMediaPair;
 import com.alibaba.otter.shared.common.model.config.data.DataMediaSource;
 import com.alibaba.otter.shared.common.model.config.pipeline.Pipeline;
-import com.google.common.base.Function;
 import com.google.common.collect.OtterMigrateMap;
+import org.apache.commons.lang.StringUtils;
+import org.apache.oro.text.regex.*;
+import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 常用的config处理帮助类
- * 
+ *
  * @author jianghang 2011-10-20 下午05:28:39
  * @version 4.0.0
  */
 public class ConfigHelper {
 
-    public static final String          MODE_PATTERN = "(.*)(\\[(\\d+)\\-(\\d+)\\])(.*)"; // 匹配offer[1-128]
-    private static Map<String, Pattern> patterns     = OtterMigrateMap.makeComputingMap(new Function<String, Pattern>() {
-
-                                                         public Pattern apply(String input) {
-                                                             PatternCompiler pc = new Perl5Compiler();
-                                                             try {
-                                                                 return pc.compile(input,
-                                                                     Perl5Compiler.CASE_INSENSITIVE_MASK
-                                                                             | Perl5Compiler.READ_ONLY_MASK);
-                                                             } catch (MalformedPatternException e) {
-                                                                 throw new ConfigException(e);
-                                                             }
-                                                         }
-                                                     });
+    public static final String MODE_PATTERN = "(.*)(\\[(\\d+)\\-(\\d+)\\])(.*)"; // 匹配offer[1-128]
+    private static Map<String, Pattern> patterns = OtterMigrateMap.makeComputingMap(input -> {
+        PatternCompiler pc = new Perl5Compiler();
+        try {
+            return pc.compile(input,
+                    Perl5Compiler.CASE_INSENSITIVE_MASK
+                            | Perl5Compiler.READ_ONLY_MASK);
+        } catch (MalformedPatternException e) {
+            throw new ConfigException(e);
+        }
+    });
 
     /**
      * 根据DataMedia id得到对应的DataMedia
@@ -208,7 +197,8 @@ public class ConfigHelper {
             return StringUtils.substringBefore(rawValue, "[") + "%";
         } else if (mode.getMode().isWildCard()) {
             StringBuilder sb = new StringBuilder(rawValue.length());
-            FOR_LOOP: for (int i = 0; i < rawValue.length(); i++) {
+            FOR_LOOP:
+            for (int i = 0; i < rawValue.length(); i++) {
                 String charString = String.valueOf(rawValue.charAt(i));
                 if (isWildCard(charString)) {
                     break FOR_LOOP;
@@ -290,8 +280,8 @@ public class ConfigHelper {
     }
 
     private static boolean isWildCard(String value) {
-        return StringUtils.containsAny(value, new char[] { '*', '?', '+', '|', '(', ')', '{', '}', '[', ']', '\\', '$',
-                '^', '.' });
+        return StringUtils.containsAny(value, new char[]{'*', '?', '+', '|', '(', ')', '{', '}', '[', ']', '\\', '$',
+                '^', '.'});
     }
 
     private static boolean isWildCardMatch(String matchPattern, String value) {

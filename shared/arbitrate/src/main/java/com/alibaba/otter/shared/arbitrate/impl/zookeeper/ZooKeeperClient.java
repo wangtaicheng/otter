@@ -16,36 +16,29 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.zookeeper;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
+import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
+import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import com.google.common.collect.OtterMigrateMap;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.apache.commons.lang.StringUtils;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 
-import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
-import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
-import com.google.common.base.Function;
-import com.google.common.collect.OtterMigrateMap;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 封装了ZooKeeper，使其支持节点的优先顺序，比如美国机房的节点会优先加载美国对应的zk集群列表，都失败后才会选择加载杭州的zk集群列表
- * 
+ *
  * @author jianghang 2011-9-8 下午07:55:44
  * @version 4.0.0
  */
 public class ZooKeeperClient {
 
-    private static String               cluster;
-    private static int                  sessionTimeout = 10 * 1000;
-    private static Map<Long, ZkClientx> clients        = OtterMigrateMap.makeComputingMap(new Function<Long, ZkClientx>() {
-
-                                                           public ZkClientx apply(Long pipelineId) {
-                                                               return createClient();
-                                                           }
-                                                       });
-    private static Long                 defaultId      = 0L;
+    private static String cluster;
+    private static int sessionTimeout = 10 * 1000;
+    private static Map<Long, ZkClientx> clients = OtterMigrateMap.makeComputingMap(pipelineId -> createClient());
+    private static Long defaultId = 0L;
 
     /**
      * 获取对应的zookeeper客户端
@@ -70,10 +63,12 @@ public class ZooKeeperClient {
     public static void registerNotification(final SessionExpiredNotification notification) {
         getInstance().subscribeStateChanges(new IZkStateListener() {
 
+            @Override
             public void handleStateChanged(KeeperState state) throws Exception {
 
             }
 
+            @Override
             public void handleNewSession() throws Exception {
                 notification.notification();
             }
@@ -95,7 +90,7 @@ public class ZooKeeperClient {
      */
     private static List<String> getServerAddrs() {
         List<String> result = ArbitrateConfigUtils.getServerAddrs();
-        if (result == null || result.size() == 0) {
+        if (result == null || result.isEmpty()) {
             result = Arrays.asList(cluster);
         }
         return result;
