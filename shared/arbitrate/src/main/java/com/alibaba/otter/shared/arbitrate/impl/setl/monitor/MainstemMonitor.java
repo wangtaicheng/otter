@@ -45,6 +45,7 @@ import org.springframework.util.Assert;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -63,18 +64,17 @@ import java.util.concurrent.TimeUnit;
 public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
 
     private static final Logger logger = LoggerFactory.getLogger(MainstemMonitor.class);
-    private ZkClientx zookeeper = ZooKeeperClient.getInstance();
-    private ScheduledExecutorService delayExector = Executors.newScheduledThreadPool(1);
+    private static final ZkClientx ZOOKEEPER = ZooKeeperClient.getInstance();
+    private static final ScheduledExecutorService DELAY_EXECUTOR = Executors.newScheduledThreadPool(1);
     private int delayTime = 5;
     private volatile MainStemEventData activeData;
-    private IZkDataListener dataListener;
-    private BooleanMutex mutex = new BooleanMutex(false);
+    private final IZkDataListener dataListener;
+    private static final BooleanMutex MUTEX = new BooleanMutex(false);
     private volatile boolean release = false;
-    private List<MainstemListener> listeners = Collections.synchronizedList(new ArrayList<MainstemListener>());
+    private final List<MainstemListener> listeners = Collections.synchronizedList(new ArrayList<>());
 
     public MainstemMonitor(Long pipelineId) {
         super(pipelineId);
-        // initMainstem();
         dataListener = new IZkDataListener() {
 
             @Override
@@ -82,43 +82,34 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
                 MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
                 MainStemEventData mainStemData = JsonUtils.unmarshalFromByte((byte[]) data, MainStemEventData.class);
                 if (!isMine(mainStemData.getNid())) {
-                    mutex.set(false);
+                    MUTEX.set(false);
                 }
-
-                if (!mainStemData.isActive() && isMine(mainStemData.getNid())) { // 说明出现了主动释放的操作，并且本机之前是active
+                // 说明出现了主动释放的操作，并且本机之前是active
+                if (!mainStemData.isActive() && isMine(mainStemData.getNid())) {
                     release = true;
                     releaseMainstem();// 彻底释放mainstem
                 }
 
-                activeData = (MainStemEventData) mainStemData;
+                activeData = mainStemData;
             }
 
             @Override
             public void handleDataDeleted(String dataPath) throws Exception {
                 MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
-                mutex.set(false);
+                MUTEX.set(false);
                 if (!release && isMine(activeData.getNid())) {
                     // 如果上一次active的状态就是本机，则即时触发一下active抢占
                     initMainstem();
-                    // } else if (!isMine(activeData.getNid()) && !activeData.isActive()) {
-                    // // 针对其他的节点，如果发现上一次的mainstem状态为非active状态，说明存在手工干预进行mainstem切换，可立马进行抢占mainstem
-                    // initMainstem();
                 } else {
                     // 否则就是等待delayTime，避免因网络瞬端或者zk异常，导致出现频繁的切换操作
-                    delayExector.schedule(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            initMainstem();
-                        }
-                    }, delayTime, TimeUnit.SECONDS);
+                    DELAY_EXECUTOR.schedule(MainstemMonitor.this::initMainstem, delayTime, TimeUnit.SECONDS);
                 }
             }
 
         };
 
         String path = StagePathUtils.getMainStem(getPipelineId());
-        zookeeper.subscribeDataChanges(path, dataListener);
+        ZOOKEEPER.subscribeDataChanges(path, dataListener);
         MonitorScheduler.register(this, 5 * 60 * 1000L, 5 * 60 * 1000L); // 5分钟处理一次
     }
 
@@ -151,23 +142,27 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
         MainStemEventData data = new MainStemEventData();
         data.setStatus(MainStemEventData.Status.TAKEING);
         data.setPipelineId(getPipelineId());
-        data.setNid(nid);// 设置当前的nid
+        // 设置当前的nid
+        data.setNid(nid);
         // 序列化
         byte[] bytes = JsonUtils.marshalToByte(data);
         try {
-            mutex.set(false);
-            zookeeper.create(path, bytes, CreateMode.EPHEMERAL);
+            MUTEX.set(false);
+            ZOOKEEPER.create(path, bytes, CreateMode.EPHEMERAL);
             activeData = data;
-            processActiveEnter();// 触发一下事件
-            mutex.set(true);
+            // 触发一下事件
+            processActiveEnter();
+            MUTEX.set(true);
         } catch (ZkNodeExistsException e) {
-            bytes = zookeeper.readData(path, true);
-            if (bytes == null) {// 如果不存在节点，立即尝试一次
+            bytes = ZOOKEEPER.readData(path, true);
+            if (bytes == null) {
+                // 如果不存在节点，立即尝试一次
                 initMainstem();
             } else {
                 activeData = JsonUtils.unmarshalFromByte(bytes, MainStemEventData.class);
-                if (nid.equals(activeData.getNid())) { // reload时会重复创建，如果是自己就触发一下
-                    mutex.set(true);
+                if (Objects.equals(nid, activeData.getNid())) {
+                    // reload时会重复创建，如果是自己就触发一下
+                    MUTEX.set(true);
                 }
             }
         }
@@ -178,9 +173,9 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
         super.destory();
 
         String path = StagePathUtils.getMainStem(getPipelineId());
-        zookeeper.unsubscribeDataChanges(path, dataListener);
+        ZOOKEEPER.unsubscribeDataChanges(path, dataListener);
 
-        delayExector.shutdownNow(); // 关闭调度
+        DELAY_EXECUTOR.shutdownNow(); // 关闭调度
         releaseMainstem();
         MonitorScheduler.unRegister(this);
     }
@@ -188,8 +183,8 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
     public boolean releaseMainstem() {
         if (check()) {
             String path = StagePathUtils.getMainStem(getPipelineId());
-            zookeeper.delete(path);
-            mutex.set(false);
+            ZOOKEEPER.delete(path);
+            MUTEX.set(false);
             processActiveExit();
             return true;
         }
@@ -208,7 +203,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
      */
     public void waitForActive() throws InterruptedException {
         initMainstem();
-        mutex.get();
+        MUTEX.get();
     }
 
     /**
@@ -217,7 +212,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
     public boolean check() {
         String path = StagePathUtils.getMainStem(getPipelineId());
         try {
-            byte[] bytes = zookeeper.readData(path);
+            byte[] bytes = ZOOKEEPER.readData(path);
             Long nid = ArbitrateConfigUtils.getCurrentNid();
             MainStemEventData eventData = JsonUtils.unmarshalFromByte(bytes, MainStemEventData.class);
             activeData = eventData;// 更新下为最新值
@@ -254,7 +249,7 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
         String path = StagePathUtils.getMainStem(data.getPipelineId());
         byte[] bytes = JsonUtils.marshalToByte(data);// 初始化的数据对象
         try {
-            zookeeper.writeData(path, bytes);
+            ZOOKEEPER.writeData(path, bytes);
         } catch (ZkException e) {
             throw new ArbitrateException("mainStem_single", data.toString(), e);
         }
@@ -269,7 +264,8 @@ public class MainstemMonitor extends ArbitrateLifeCycle implements Monitor {
 
     public void addListener(MainstemListener listener) {
         if (logger.isDebugEnabled()) {
-            logger.debug("## pipeline[{}] add listener [{}]", ClassUtils.getShortClassName(listener.getClass()));
+            logger.debug("## pipeline[{}] add listener [{}]", getPipelineId(),
+                    ClassUtils.getShortClassName(listener.getClass()));
         }
 
         this.listeners.add(listener);

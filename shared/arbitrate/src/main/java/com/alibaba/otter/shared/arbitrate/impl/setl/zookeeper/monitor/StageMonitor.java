@@ -439,7 +439,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
                 @Override
                 public void run() {
                     MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
-                    listener.stageChannged(processId, stages);
+                    listener.stageChanged(processId, stages);
                 }
             });
         }
@@ -453,7 +453,7 @@ public class StageMonitor extends ArbitrateLifeCycle implements Monitor {
                 @Override
                 public void run() {
                     MDC.put(ArbitrateConstants.SPLIT_PIPELINE_LOG_FILE_KEY, String.valueOf(getPipelineId()));
-                    listener.processTermined(processId);
+                    listener.processTerminated(processId);
                 }
             });
         }

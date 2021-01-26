@@ -16,43 +16,44 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor;
 
-import java.util.List;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
 import com.alibaba.otter.shared.arbitrate.model.EtlEventData;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+
+import java.util.List;
 
 /**
  * 处理load模块节点的监控
- * 
+ *
  * <pre>
  * 监控内容：
  *  1. 某个process的stage节点发生变化后，判断transform节点是否已经准备完成，并判断当前是否为最小的process
  *  2. process发生变化后，检测当前的最小processId是否有变化，有变化则触发检查是否可以进行load操作
  * </pre>
- * 
+ *
  * @author jianghang 2011-9-21 下午02:20:52
  * @version 4.0.0
  */
 public class LoadStageListener extends AbstractStageListener implements StageListener {
 
     // private static final String currentNode = ArbitrateConstants.NODE_LOADED;
-    private static final String prevNode = ArbitrateConstants.NODE_TRANSFORMED;
+    private static final String PREV_NODE = ArbitrateConstants.NODE_TRANSFORMED;
 
-    public LoadStageListener(Long pipelineId){
+    public LoadStageListener(Long pipelineId) {
         super(pipelineId);
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         // nothing
     }
 
-    public void stageChannged(Long processId, List<String> stageNodes) {
+    @Override
+    public void stageChanged(Long processId, List<String> stageNodes) {
         try {
             // 1. 根据pipelineId+processId构造对应的path
             String path = StagePathUtils.getProcess(getPipelineId(), processId);
@@ -71,9 +72,9 @@ public class LoadStageListener extends AbstractStageListener implements StageLis
             }
 
             // 2.2 判断是否存在了prev节点
-            if (stageNodes.contains(prevNode)) {
+            if (stageNodes.contains(PREV_NODE)) {
                 // 2.2.1 获取上一个节点的next node节点信息
-                byte[] data = zookeeper.readData(path + "/" + prevNode);
+                byte[] data = zookeeper.readData(path + "/" + PREV_NODE);
                 EtlEventData eventData = JsonUtils.unmarshalFromByte(data, EtlEventData.class);
                 if (eventData.getNextNid().equals(ArbitrateConfigUtils.getCurrentNid())) {
                     List<Long> currentProcessIds = stageMonitor.getCurrentProcessIds(false);

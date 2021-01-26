@@ -16,48 +16,49 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor;
 
-import java.util.List;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
 import com.alibaba.otter.shared.arbitrate.model.EtlEventData;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+
+import java.util.List;
 
 /**
  * 处理extract模块节点的监控
- * 
+ *
  * <pre>
  * 监控内容：
  *  1. 某个process的stage节点发生变化后，判断selected节点是否已经准备完成
  * </pre>
- * 
+ *
  * @author jianghang 2011-9-21 下午02:19:19
  * @version 4.0.0
  */
 public class ExtractStageListener extends AbstractStageListener implements StageListener {
 
-    private static final String currentNode = ArbitrateConstants.NODE_EXTRACTED;
-    private static final String prevNode    = ArbitrateConstants.NODE_SELECTED;
+    private static final String CURRENT_NODE = ArbitrateConstants.NODE_EXTRACTED;
+    private static final String PREV_NODE = ArbitrateConstants.NODE_SELECTED;
 
-    public ExtractStageListener(Long pipelineId){
+    public ExtractStageListener(Long pipelineId) {
         super(pipelineId);
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         // do nothing
     }
 
-    public void stageChannged(Long processId, List<String> stageNodes) {
+    @Override
+    public void stageChanged(Long processId, List<String> stageNodes) {
         try {
             // 1. 根据pipelineId+processId构造对应的path
             String path = StagePathUtils.getProcess(getPipelineId(), processId);
 
             // 2.1 判断是否存在了current节点
-            if (stageNodes.contains(currentNode)) {
+            if (stageNodes.contains(CURRENT_NODE)) {
                 if (replyProcessIds.remove(processId)) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("## remove reply id [{}]", processId);
@@ -72,12 +73,13 @@ public class ExtractStageListener extends AbstractStageListener implements Stage
             }
 
             // 2.2 判断是否存在了prev节点
-            if (stageNodes.contains(prevNode)) {
+            if (stageNodes.contains(PREV_NODE)) {
                 // 2.2.1 获取上一个节点的next node节点信息
-                byte[] data = zookeeper.readData(path + "/" + prevNode);
+                byte[] data = zookeeper.readData(path + "/" + PREV_NODE);
                 EtlEventData eventData = JsonUtils.unmarshalFromByte(data, EtlEventData.class);
                 if (eventData.getNextNid().equals(ArbitrateConfigUtils.getCurrentNid())) {
-                    addReply(processId);// 添加到返回队列,唤醒wait阻塞
+                    // 添加到返回队列,唤醒wait阻塞
+                    addReply(processId);
                 }
             }
         } catch (ZkNoNodeException e) {

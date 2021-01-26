@@ -16,36 +16,32 @@
 
 package com.alibaba.otter.shared.common.utils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.channels.Channels;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+
 /**
  * 基于nio技术，提供一些快速的stream处理
- * 
+ *
  * @author jianghang 2011-10-9 下午06:28:44
  * @version 4.0.0
  */
 public class NioUtils {
 
-    private static final Logger logger              = LoggerFactory.getLogger(NioUtils.class);
-    private static final int    DEFAULT_BUFFER_SIZE = 8 * 1024;
-    private static final int    timeWait            = 1000;
+
+    private static final Logger logger = LoggerFactory.getLogger(NioUtils.class);
+    private static final int DEFAULT_BUFFER_SIZE = 8 * 1024;
+    private static final int TIME_WAIT = 1000;
+
+    private NioUtils() {
+    }
 
     /**
      * 基于流的数据copy
@@ -289,7 +285,7 @@ public class NioUtils {
 
     /**
      * 尝试多次复制文件，排除网络故障
-     * 
+     *
      * @param src
      * @param dest
      * @param retryTimes
@@ -309,8 +305,8 @@ public class NioUtils {
                 return true;
             } catch (Exception ex) {
                 // 本次等待时间
-                int wait = (int) Math.pow(retry, retry) * timeWait;
-                wait = (wait < timeWait) ? timeWait : wait;
+                int wait = (int) Math.pow(retry, retry) * TIME_WAIT;
+                wait = (wait < TIME_WAIT) ? TIME_WAIT : wait;
 
                 if (retry == totalRetry) {
                     if (ex instanceof IOException) {
@@ -414,8 +410,8 @@ public class NioUtils {
                 }
             } catch (Exception ex) {
                 // 本次等待时间
-                int wait = (int) Math.pow(retry, retry) * timeWait;
-                wait = (wait < timeWait) ? timeWait : wait;
+                int wait = (int) Math.pow(retry, retry) * TIME_WAIT;
+                wait = (wait < TIME_WAIT) ? TIME_WAIT : wait;
 
                 // 尝试等待
                 if (retry == totalRetry) {
@@ -424,7 +420,7 @@ public class NioUtils {
 
                     // 记录日志
                     logger.warn(String.format("[%s] create() - retry %s failed : wait [%s] ms , caused by %s",
-                                              dest.getAbsolutePath(), retry, wait, ex.getMessage()));
+                            dest.getAbsolutePath(), retry, wait, ex.getMessage()));
                     try {
                         Thread.sleep(wait);
                     } catch (InterruptedException e) {
@@ -439,7 +435,7 @@ public class NioUtils {
 
     /**
      * 正常删除，实在不行就jvm退出时删除
-     * 
+     *
      * @param dest
      * @param retryTimes
      */
@@ -449,7 +445,7 @@ public class NioUtils {
 
     /**
      * 尝试多次删除，实在不行就jvm退出时删除
-     * 
+     *
      * @param dest
      * @param retryTimes
      */
@@ -476,8 +472,8 @@ public class NioUtils {
                 return true;
             } catch (Exception ex) {
                 // 本次等待时间
-                int wait = (int) Math.pow(retry, retry) * timeWait;
-                wait = (wait < timeWait) ? timeWait : wait;
+                int wait = (int) Math.pow(retry, retry) * TIME_WAIT;
+                wait = (wait < TIME_WAIT) ? TIME_WAIT : wait;
                 if (retry == totalRetry) {
                     try {
                         FileUtils.forceDeleteOnExit(dest);
@@ -488,7 +484,7 @@ public class NioUtils {
                 } else {
                     // 记录日志
                     logger.warn(String.format("[%s] delete() - retry %s failed : wait [%s] ms , caused by %s",
-                                              dest.getAbsolutePath(), retry, wait, ex.getMessage()));
+                            dest.getAbsolutePath(), retry, wait, ex.getMessage()));
                     try {
                         Thread.sleep(wait);
                     } catch (InterruptedException e) {
@@ -512,9 +508,9 @@ public class NioUtils {
      * Moves the source file to the destination. If the destination cannot be created or is a read-only file, the method
      * returns <code>false</code>. Otherwise, the contents of the source are copied to the destination, the source is
      * deleted, and <code>true</code> is returned.
-     * 
-     * @param src The source file to move.
-     * @param dest The destination where to move the file.
+     *
+     * @param src        The source file to move.
+     * @param dest       The destination where to move the file.
      * @param retryTimes Move and delete retry times
      */
     public static void move(final File src, File dest, final int retryTimes) throws IOException {

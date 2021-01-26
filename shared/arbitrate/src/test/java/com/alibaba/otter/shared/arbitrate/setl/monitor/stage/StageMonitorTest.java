@@ -16,26 +16,21 @@
 
 package com.alibaba.otter.shared.arbitrate.setl.monitor.stage;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.Test;
-
 import com.alibaba.otter.shared.arbitrate.impl.ArbitrateConstants;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.monitor.MonitorScheduler;
 import com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor.StageListener;
 import com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor.StageMonitor;
 import com.alibaba.otter.shared.arbitrate.setl.BaseStageTest;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * stage监控测试
- * 
+ *
  * @author jianghang 2011-9-21 下午02:37:23
  * @version 4.0.0
  */
@@ -43,6 +38,7 @@ public class StageMonitorTest extends BaseStageTest {
 
     private StageMonitor monitor;
 
+    @Override
     @AfterMethod
     public void dispose() {
         MonitorScheduler.unRegister(monitor);
@@ -82,17 +78,19 @@ public class StageMonitorTest extends BaseStageTest {
             final CountDownLatch count = new CountDownLatch(1);
             monitor.addListener(new StageListener() {
 
-                public void stageChannged(Long processId, List<String> stageNodes) {
+                @Override
+                public void stageChanged(Long processId, List<String> stageNodes) {
 
                 }
 
+                @Override
                 public void processChanged(List<Long> processIds) {
                     count.countDown();
                     want.collection(processIds).isEqualTo(initProcessIds);
                 }
 
                 @Override
-                public void processTermined(Long processId) {
+                public void processTerminated(Long processId) {
 
                 }
             });

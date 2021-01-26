@@ -16,12 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.rpc.monitor;
 
-import java.util.List;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.zookeeper.CreateMode;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
@@ -33,20 +27,25 @@ import com.alibaba.otter.shared.arbitrate.model.MainStemEventData;
 import com.alibaba.otter.shared.arbitrate.model.ProcessNodeEventData;
 import com.alibaba.otter.shared.common.model.config.pipeline.PipelineParameter.ArbitrateMode;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.zookeeper.CreateMode;
+
+import java.util.List;
 
 /**
  * 监听process的变化，发现节点数<并行度，则添加一个可调度的process
- * 
+ *
  * @author jianghang 2012-9-28 下午10:00:22
  * @version 4.1.0
  */
 public class SelectProcessListener extends AbstractProcessListener implements ProcessListener, PermitListener, MainstemListener {
 
     private volatile boolean isPermit = true;
-    private PermitMonitor    permitMonitor;
-    private MainstemMonitor  mainstemMonitor;
+    private PermitMonitor permitMonitor;
+    private MainstemMonitor mainstemMonitor;
 
-    public SelectProcessListener(Long pipelineId){
+    public SelectProcessListener(Long pipelineId) {
         super(pipelineId);
         permitMonitor = ArbitrateFactory.getInstance(pipelineId, PermitMonitor.class);
         mainstemMonitor = ArbitrateFactory.getInstance(pipelineId, MainstemMonitor.class);
@@ -56,6 +55,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
         recovery(getPipelineId());// 启动时载入一次
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         super.processChanged(processIds);
         // add by ljh at 2012-09-13,解决zookeeper ConnectionLoss问题
@@ -77,7 +77,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
                 }
 
                 String mainStemPath = StagePathUtils.getMainStem(getPipelineId());
-                byte[] bytes = zookeeper.readData(mainStemPath, true);
+                byte[] bytes = ZOOKEEPER.readData(mainStemPath, true);
                 if (bytes == null) {
                     return;
                 }
@@ -98,7 +98,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
 
                 synchronized (this) {
                     // 重新再取一次, dobble-check
-                    List<String> currentProcesses = zookeeper.getChildren(path);
+                    List<String> currentProcesses = ZOOKEEPER.getChildren(path);
                     size = ArbitrateConfigUtils.getParallelism(getPipelineId()) - currentProcesses.size();
                     if (size > 0) {// 创建一个节点
                         ProcessNodeEventData nodeData = new ProcessNodeEventData();
@@ -106,7 +106,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
                         nodeData.setMode(ArbitrateMode.RPC);
                         nodeData.setNid(ArbitrateConfigUtils.getCurrentNid());
                         byte[] nodeBytes = JsonUtils.marshalToByte(nodeData);
-                        String processPath = zookeeper.create(path + "/", nodeBytes, CreateMode.PERSISTENT_SEQUENTIAL);
+                        String processPath = ZOOKEEPER.create(path + "/", nodeBytes, CreateMode.PERSISTENT_SEQUENTIAL);
                         // 创建为顺序的节点
                         String processNode = StringUtils.substringAfterLast(processPath, "/");
                         Long processId = StagePathUtils.getProcessId(processNode);// 添加到当前的process列表
@@ -122,6 +122,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
 
     }
 
+    @Override
     public void processChanged(boolean isPermit) {
         if (this.isPermit != isPermit && isPermit == true) { // isPemit从未授权到一个授权的变动
             processMonitor.reload(); // 触发一下processChanged，快速的创建process
@@ -138,7 +139,7 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
         for (Long processId : currentProcessIds) {
             String path = StagePathUtils.getProcess(pipelineId, processId);
             try {
-                byte[] bytes = zookeeper.readData(path);
+                byte[] bytes = ZOOKEEPER.readData(path);
                 ProcessNodeEventData nodeData = JsonUtils.unmarshalFromByte(bytes, ProcessNodeEventData.class);
                 if (nodeData.getStatus().isUnUsed()) {// 加入未使用的processId
                     addReply(processId);
@@ -149,15 +150,18 @@ public class SelectProcessListener extends AbstractProcessListener implements Pr
         }
     }
 
+    @Override
     public void processActiveEnter() {
         recovery(getPipelineId());
         processMonitor.reload(); // 触发一下processChanged
     }
 
+    @Override
     public void processActiveExit() {
         ArbitrateFactory.destory(getPipelineId(), this.getClass());
     }
 
+    @Override
     public void destory() {
         // 取消注册
         permitMonitor.removeListener(this);

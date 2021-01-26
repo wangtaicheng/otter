@@ -16,52 +16,52 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.I0Itec.zkclient.IZkChildListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.TerminProcessQueue;
 import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.I0Itec.zkclient.IZkChildListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 结束信号的监听
- * 
+ *
  * @author jianghang 2011-9-26 上午11:31:50
  * @version 4.0.0
  */
 public class TerminMonitor extends ArbitrateLifeCycle implements Monitor {
 
-    private static final Logger logger         = LoggerFactory.getLogger(TerminMonitor.class);
+    private static final Logger logger = LoggerFactory.getLogger(TerminMonitor.class);
 
-    private ZkClientx           zookeeper      = ZooKeeperClient.getInstance();
-    private TerminProcessQueue  waitProcessIds = new TerminProcessQueue();                    // 记录对应的终结信号数据，从小到大的排序
-    private IZkChildListener    childListener;
+    private static final ZkClientx ZOOKEEPER = ZooKeeperClient.getInstance();
+    /**
+     * 记录对应的终结信号数据，从小到大的排序
+     */
+    private final TerminProcessQueue waitProcessIds = new TerminProcessQueue();
+    private final IZkChildListener childListener;
 
-    public TerminMonitor(Long pipelineId){
+    public TerminMonitor(Long pipelineId) {
         super(pipelineId);
-        childListener = new IZkChildListener() {
-
-            public void handleChildChange(String parentPath, List<String> currentChilds) throws Exception {
-                if (currentChilds != null) {
-                    initTermin(currentChilds);
-                }
+        childListener = (parentPath, currentChildren) -> {
+            if (currentChildren != null) {
+                initTermin(currentChildren);
             }
         };
 
         String path = StagePathUtils.getTerminRoot(getPipelineId());
-        List<String> childs = zookeeper.subscribeChildChanges(path, childListener);
+        List<String> childs = ZOOKEEPER.subscribeChildChanges(path, childListener);
         initTermin(childs);
         MonitorScheduler.register(this);
     }
 
+    @Override
     public void reload() {
         try {
             if (logger.isDebugEnabled()) {
@@ -74,6 +74,7 @@ public class TerminMonitor extends ArbitrateLifeCycle implements Monitor {
         }
     }
 
+    @Override
     public void destory() {
         super.destory();
         if (logger.isDebugEnabled()) {
@@ -81,7 +82,7 @@ public class TerminMonitor extends ArbitrateLifeCycle implements Monitor {
         }
 
         String path = StagePathUtils.getTerminRoot(getPipelineId());
-        zookeeper.unsubscribeChildChanges(path, childListener);
+        ZOOKEEPER.unsubscribeChildChanges(path, childListener);
         MonitorScheduler.unRegister(this);
         waitProcessIds.clear();
     }
@@ -119,7 +120,7 @@ public class TerminMonitor extends ArbitrateLifeCycle implements Monitor {
 
     private void initTermin() {
         String path = StagePathUtils.getTerminRoot(getPipelineId());
-        List<String> termins = zookeeper.getChildren(path);
+        List<String> termins = ZOOKEEPER.getChildren(path);
         initTermin(termins);
     }
 
@@ -128,7 +129,7 @@ public class TerminMonitor extends ArbitrateLifeCycle implements Monitor {
             return;
         }
 
-        List<Long> processIds = new ArrayList<Long>(termins.size());
+        List<Long> processIds = new ArrayList<>(termins.size());
         for (String termin : termins) {
             processIds.add(StagePathUtils.getProcessId(termin));
         }

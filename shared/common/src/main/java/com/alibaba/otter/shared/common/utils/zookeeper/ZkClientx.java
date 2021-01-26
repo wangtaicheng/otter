@@ -54,14 +54,14 @@ import java.util.concurrent.TimeUnit;
 public class ZkClientx implements Watcher {
 
     // 对于zkclient进行一次缓存，避免一个jvm内部使用多个zk connection
-    private static final Map<String, ZkClientx> clients = OtterMigrateMap.makeComputingMap(ZkClientx::new);
+    private static final Map<String, ZkClientx> CLIENTS = OtterMigrateMap.makeComputingMap(ZkClientx::new);
 
     public static ZkClientx getZkClient(String servers) {
-        return clients.get(servers);
+        return CLIENTS.get(servers);
     }
 
-    public ZkClientx(String serverstring) {
-        this(serverstring, Integer.MAX_VALUE);
+    public ZkClientx(String serverString) {
+        this(serverString, Integer.MAX_VALUE);
     }
 
     public ZkClientx(String zkServers, int connectionTimeout) {

@@ -16,22 +16,17 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.zookeeper;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooDefs;
-import org.apache.zookeeper.ZooKeeper;
+import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 import org.apache.zookeeper.AsyncCallback.VoidCallback;
+import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 扩展ZooKeeper，主要是统一处理下链接异常和ACL管理 <br/>
@@ -40,7 +35,7 @@ import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
  * <a href="http://wiki.apache.org/hadoop/ZooKeeper/FAQ#A3">http://wiki.apache. org/hadoop/ZooKeeper/FAQ#A3</a> <br/>
  * <a href="http://wiki.apache.org/hadoop/ZooKeeper/ErrorHandling"
  * >http://wiki.apache.org/hadoop/ZooKeeper/ErrorHandling</a>
- * 
+ *
  * @author jianghang 2011-9-23 下午01:38:06
  * @version 4.0.0
  */
@@ -48,32 +43,32 @@ import com.alibaba.otter.shared.arbitrate.exception.ArbitrateException;
 @Deprecated
 public class ZooKeeperx {
 
-    private static final Logger  logger     = LoggerFactory.getLogger(ZooKeeperx.class);
+    private static final Logger logger = LoggerFactory.getLogger(ZooKeeperx.class);
     // private static final Field zooKeeperField = ReflectionUtils.findField(ZooKeeperClient.class, "zookeeper");
-    private static final Integer maxRetry   = 3;                                        // 出现exception，最多重试3次
+    private static final Integer MAX_RETRY = 3;                                        // 出现exception，最多重试3次
 
-    private long                 retryDelay = 3000L;
-    private List<ACL>            acl        = ZooDefs.Ids.OPEN_ACL_UNSAFE;
-    private ZooKeeper            zookeeper;
-    private AtomicInteger        cversion   = new AtomicInteger(0);
-    private AtomicBoolean        running    = new AtomicBoolean(true);
+    private long retryDelay = 3000L;
+    private List<ACL> acl = ZooDefs.Ids.OPEN_ACL_UNSAFE;
+    private ZooKeeper zookeeper;
+    private AtomicInteger cversion = new AtomicInteger(0);
+    private AtomicBoolean running = new AtomicBoolean(true);
 
-    public ZooKeeperx(ZooKeeper zookeeper){
+    public ZooKeeperx(ZooKeeper zookeeper) {
         this.zookeeper = zookeeper;
     }
 
     /**
      * add by ljh at 2012-09-13
-     * 
+     *
      * <pre>
      * 1. 使用zookeeper过程，针对出现ConnectionLoss异常，比如进行create/setData/delete，操作可能已经在zookeeper server上进行应用
      * 2. 针对SelectStageListener进行processId创建时，会以最后一次创建的processId做为调度id. 如果进行retry，之前成功的processId就会被遗漏了
      * </pre>
-     * 
+     *
      * @see org.apache.zookeeper.ZooKeeper#create(String path, byte[] path, List acl, CreateMode mode)
      */
     public String createNoRetry(final String path, final byte[] data, final CreateMode mode) throws KeeperException,
-                                                                                            InterruptedException {
+            InterruptedException {
         return zookeeper.create(path, data, acl, mode);
     }
 
@@ -82,16 +77,17 @@ public class ZooKeeperx {
      * 1. 使用zookeeper过程，针对出现ConnectionLoss异常，比如进行create/setData/delete，操作可能已经在zookeeper server上进行应用
      * 2. 针对SelectStageListener进行processId创建时，会以最后一次创建的processId做为调度id. 如果进行retry，之前成功的processId就会被遗漏了
      * </pre>
-     * 
+     *
      * @see org.apache.zookeeper.ZooKeeper#create(String path, byte[] path, List acl, CreateMode mode)
      */
     public String create(final String path, final byte[] data, final CreateMode mode) throws KeeperException,
-                                                                                     InterruptedException {
+            InterruptedException {
         if (mode.isSequential()) {
             return zookeeper.create(path, data, acl, mode);
         } else {
             return retryOperation(new ZooKeeperOperation<String>() {
 
+                @Override
                 public String execute() throws KeeperException, InterruptedException {
                     return zookeeper.create(path, data, acl, mode);
                 }
@@ -106,6 +102,7 @@ public class ZooKeeperx {
     public void delete(final String path, final int version) throws InterruptedException, KeeperException {
         retryOperation(new ZooKeeperOperation() {
 
+            @Override
             public Object execute() throws KeeperException, InterruptedException {
                 zookeeper.delete(path, version);
                 return null;
@@ -114,13 +111,14 @@ public class ZooKeeperx {
     }
 
     /**
-     * @see org.apache.zookeeper.ZooKeeper#delete(String path, int version , VoidCallback cb , Object ctx)
+     * @see org.apache.zookeeper.ZooKeeper#delete(String path, int version, VoidCallback cb, Object ctx)
      */
     public void delete(final String path, final int version, final VoidCallback cb, final Object ctx)
-                                                                                                     throws InterruptedException,
-                                                                                                     KeeperException {
+            throws InterruptedException,
+            KeeperException {
         retryOperation(new ZooKeeperOperation() {
 
+            @Override
             public Object execute() throws KeeperException, InterruptedException {
                 zookeeper.delete(path, version, cb, ctx);
                 return null;
@@ -134,6 +132,7 @@ public class ZooKeeperx {
     public Stat exists(final String path, final boolean watch) throws KeeperException, InterruptedException {
         return retryOperation(new ZooKeeperOperation<Stat>() {
 
+            @Override
             public Stat execute() throws KeeperException, InterruptedException {
                 return zookeeper.exists(path, watch);
             }
@@ -147,6 +146,7 @@ public class ZooKeeperx {
     public Stat exists(final String path, final Watcher watcher) throws KeeperException, InterruptedException {
         return retryOperation(new ZooKeeperOperation<Stat>() {
 
+            @Override
             public Stat execute() throws KeeperException, InterruptedException {
                 return zookeeper.exists(path, watcher);
             }
@@ -157,9 +157,10 @@ public class ZooKeeperx {
      * @see org.apache.zookeeper.ZooKeeper#getChildren(String path, boolean watch)
      */
     public List<String> getChildren(final String path, final boolean watch) throws KeeperException,
-                                                                           InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<List<String>>() {
 
+            @Override
             public List<String> execute() throws KeeperException, InterruptedException {
                 return zookeeper.getChildren(path, watch);
             }
@@ -168,12 +169,13 @@ public class ZooKeeperx {
     }
 
     /**
-     * @see org.apache.zookeeper.ZooKeeper#getChildren(String path, boolean watch , Stat stat)
+     * @see org.apache.zookeeper.ZooKeeper#getChildren(String path, boolean watch, Stat stat)
      */
     public List<String> getChildren(final String path, final boolean watch, final Stat stat) throws KeeperException,
-                                                                                            InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<List<String>>() {
 
+            @Override
             public List<String> execute() throws KeeperException, InterruptedException {
                 return zookeeper.getChildren(path, watch, stat);
             }
@@ -185,9 +187,10 @@ public class ZooKeeperx {
      * @see org.apache.zookeeper.ZooKeeper#getChildren(String path, Watcher watcher)
      */
     public List<String> getChildren(final String path, final Watcher watcher) throws KeeperException,
-                                                                             InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<List<String>>() {
 
+            @Override
             public List<String> execute() throws KeeperException, InterruptedException {
                 return zookeeper.getChildren(path, watcher);
             }
@@ -198,9 +201,10 @@ public class ZooKeeperx {
      * @see org.apache.zookeeper.ZooKeeper#getData(String path, boolean watch, Stat stat)
      */
     public byte[] getData(final String path, final boolean watch, final Stat stat) throws KeeperException,
-                                                                                  InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<byte[]>() {
 
+            @Override
             public byte[] execute() throws KeeperException, InterruptedException {
                 return zookeeper.getData(path, watch, stat);
             }
@@ -212,9 +216,10 @@ public class ZooKeeperx {
      * @see org.apache.zookeeper.ZooKeeper#getData(String path, Watcher watcher, Stat stat)
      */
     public byte[] getData(final String path, final Watcher watcher, final Stat stat) throws KeeperException,
-                                                                                    InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<byte[]>() {
 
+            @Override
             public byte[] execute() throws KeeperException, InterruptedException {
                 return zookeeper.getData(path, watcher, stat);
             }
@@ -225,9 +230,10 @@ public class ZooKeeperx {
      * @see org.apache.zookeeper.ZooKeeper#setData(String path, byte[] data, int version)
      */
     public Stat setData(final String path, final byte[] data, final int version) throws KeeperException,
-                                                                                InterruptedException {
+            InterruptedException {
         return retryOperation(new ZooKeeperOperation<Stat>() {
 
+            @Override
             public Stat execute() throws KeeperException, InterruptedException {
                 return zookeeper.setData(path, data, version);
             }
@@ -245,7 +251,7 @@ public class ZooKeeperx {
         }
 
         KeeperException exception = null;
-        for (int i = 0; i < maxRetry; i++) {
+        for (int i = 0; i < MAX_RETRY; i++) {
             int version = cversion.get(); // 获取版本
             int retryCount = i + 1;
             try {
@@ -264,7 +270,7 @@ public class ZooKeeperx {
                     exception = e;
                 }
                 logger.warn("Attempt " + retryCount + " failed with connection loss so " + "attempting to reconnect: "
-                            + e, e);
+                        + e, e);
                 retryDelay(retryCount);
             }
         }

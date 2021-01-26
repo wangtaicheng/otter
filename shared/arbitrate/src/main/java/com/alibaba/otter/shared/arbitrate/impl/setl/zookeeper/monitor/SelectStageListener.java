@@ -16,12 +16,6 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor;
 
-import java.util.List;
-
-import org.I0Itec.zkclient.exception.ZkException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.zookeeper.CreateMode;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.StagePathUtils;
@@ -32,25 +26,30 @@ import com.alibaba.otter.shared.arbitrate.impl.setl.monitor.listener.PermitListe
 import com.alibaba.otter.shared.arbitrate.model.MainStemEventData;
 import com.alibaba.otter.shared.arbitrate.model.ProcessNodeEventData;
 import com.alibaba.otter.shared.common.utils.JsonUtils;
+import org.I0Itec.zkclient.exception.ZkException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.zookeeper.CreateMode;
+
+import java.util.List;
 
 /**
  * 处理select模块节点的监控
- * 
+ *
  * <pre>
  * 监控内容：
  *  1. process节点变化后，判断是否小于并行度，创建新的process节点
  * </pre>
- * 
+ *
  * @author jianghang 2011-9-21 下午02:17:47
  * @version 4.0.0
  */
 public class SelectStageListener extends AbstractStageListener implements StageListener, PermitListener, MainstemListener {
 
     private volatile boolean isPermit = true;
-    private PermitMonitor    permitMonitor;
-    private MainstemMonitor  mainstemMonitor;
+    private PermitMonitor permitMonitor;
+    private MainstemMonitor mainstemMonitor;
 
-    public SelectStageListener(Long pipelineId){
+    public SelectStageListener(Long pipelineId) {
         super(pipelineId);
         permitMonitor = ArbitrateFactory.getInstance(pipelineId, PermitMonitor.class);
         mainstemMonitor = ArbitrateFactory.getInstance(pipelineId, MainstemMonitor.class);
@@ -60,6 +59,7 @@ public class SelectStageListener extends AbstractStageListener implements StageL
         recovery(getPipelineId());
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         super.processChanged(processIds);
         // add by ljh at 2012-09-13,解决zookeeper ConnectionLoss问题
@@ -125,6 +125,7 @@ public class SelectStageListener extends AbstractStageListener implements StageL
 
     }
 
+    @Override
     public void processChanged(boolean isPermit) {
         if (this.isPermit != isPermit && isPermit == true) { // isPemit从未授权到一个授权的变动
             stageMonitor.reload(); // 触发一下processChanged，快速的创建process
@@ -152,15 +153,18 @@ public class SelectStageListener extends AbstractStageListener implements StageL
         }
     }
 
+    @Override
     public void processActiveEnter() {
         recovery(getPipelineId());
         stageMonitor.reload(); // 触发一下processChanged
     }
 
+    @Override
     public void processActiveExit() {
         ArbitrateFactory.destory(getPipelineId(), this.getClass());
     }
 
+    @Override
     public void destory() {
         // 取消注册
         permitMonitor.removeListener(this);

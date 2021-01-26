@@ -16,36 +16,35 @@
 
 package com.alibaba.otter.shared.arbitrate.impl.setl.zookeeper.monitor;
 
-import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
-
-import org.apache.commons.lang.ClassUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.shared.arbitrate.impl.config.ArbitrateConfigUtils;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateFactory;
 import com.alibaba.otter.shared.arbitrate.impl.setl.ArbitrateLifeCycle;
 import com.alibaba.otter.shared.arbitrate.impl.setl.helper.ReplyProcessQueue;
 import com.alibaba.otter.shared.arbitrate.impl.zookeeper.ZooKeeperClient;
 import com.alibaba.otter.shared.common.utils.zookeeper.ZkClientx;
+import org.apache.commons.lang.ClassUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.CollectionUtils;
+
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 抽取stage处理中一些共性的内容
- * 
+ *
  * @author jianghang 2011-9-21 下午02:16:17
  * @version 4.0.0
  */
 public abstract class AbstractStageListener extends ArbitrateLifeCycle implements StageListener {
 
-    protected static final Logger logger    = LoggerFactory.getLogger(AbstractStageListener.class);
-    protected ZkClientx           zookeeper = ZooKeeperClient.getInstance();
-    protected ReplyProcessQueue   replyProcessIds;                                                 // 有响应的processId列表
-    protected ReentrantLock       lock      = new ReentrantLock();
-    protected StageMonitor        stageMonitor;
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractStageListener.class);
+    protected ZkClientx zookeeper = ZooKeeperClient.getInstance();
+    protected ReplyProcessQueue replyProcessIds;                                                 // 有响应的processId列表
+    protected ReentrantLock lock = new ReentrantLock();
+    protected StageMonitor stageMonitor;
 
-    public AbstractStageListener(Long pipelineId){
+    public AbstractStageListener(Long pipelineId) {
         super(pipelineId);
         // 设置容量，必须大于并行度，这里设置为并行度的10倍，避免因并行度的运行时变化引起问题
         int size = ArbitrateConfigUtils.getParallelism(pipelineId) * 10;
@@ -59,16 +58,19 @@ public abstract class AbstractStageListener extends ArbitrateLifeCycle implement
         stageMonitor.reload(); // 触发一下processChanged
     }
 
+    @Override
     public void processChanged(List<Long> processIds) {
         // do nothing
         compareReply(processIds);
     }
 
-    public void stageChannged(Long processId, List<String> stageNode) {
+    @Override
+    public void stageChanged(Long processId, List<String> stageNode) {
         // do nothing
     }
 
-    public synchronized void processTermined(Long processId) {
+    @Override
+    public synchronized void processTerminated(Long processId) {
         // 在运行过程中会出现Termin(rollback/restart/shutdown)等信号，仲裁器会删除当前运行的所有process
         // 因此需要删除之前已满足条件的队列记录，在具体的event处理时还会再对processId再做一次判断，是否已被废弃
         logger.info("## {} remove reply id [{}]", ClassUtils.getShortClassName(this.getClass()), processId);
@@ -101,23 +103,27 @@ public abstract class AbstractStageListener extends ArbitrateLifeCycle implement
     protected synchronized void compareReply(List<Long> processIds) {
         Object[] replyIds = replyProcessIds.toArray();
         for (Object replyId : replyIds) {
-            if (processIds.contains((Long) replyId) == false) { // 判断reply id是否在当前processId列表中
+            if (!processIds.contains(replyId)) {
+                // 判断reply id是否在当前processId列表中
                 // 因为存在并发问题，如在执行Listener事件的同时，可能触发了process的创建，这时新建的processId会进入到reply队列中
                 // 此时接受到的processIds变量为上一个版本的内容，所以会删除新建的process，导致整个通道被挂住
-                if (CollectionUtils.isEmpty(processIds) == false) {
+                if (!CollectionUtils.isEmpty(processIds)) {
                     Long processId = processIds.get(0);
-                    if (processId > (Long) replyId) { // 如果当前最小的processId都大于replyId, processId都是递增创建的
-                        processTermined((Long) replyId); // 调用一下删除操作
+                    // 如果当前最小的processId都大于replyId, processId都是递增创建的
+                    if (processId > (Long) replyId) {
+                        // 调用一下删除操作
+                        processTerminated((Long) replyId);
                     }
                 }
             }
         }
     }
 
+    @Override
     public void destory() {
         super.destory();
         logger.info("## destory pipeline[{}] , Listener[{}]", getPipelineId(),
-                    ClassUtils.getShortClassName(this.getClass()));
+                ClassUtils.getShortClassName(this.getClass()));
 
         replyProcessIds.clear();
         stageMonitor.removeListener(this);
